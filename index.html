@@ -6,23 +6,20 @@
     <title>חמ"ל טיסות ארקיע - יריב</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --danger: #ef4444; --success: #22c55e; --warning: #f59e0b; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; transition: background 0.5s; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; margin-bottom: 20px; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; width: 100%; max-width: 450px; text-align: center; border: 1px solid #334155; margin-bottom: 20px; }
         .index-value { font-size: 5rem; font-weight: 900; color: var(--accent); margin: 10px 0; line-height: 1; }
-        .my-flight { background: #1e293b; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; margin-bottom: 20px; position: relative; }
+        .my-flight { background: #1e293b; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; width: 100%; max-width: 450px; margin-bottom: 20px; }
         .countdown { font-size: 0.85rem; color: var(--accent); margin-top: 10px; font-weight: bold; }
-        .flight-list { width: 100%; max-width: 450px; }
         .flight-item { background: rgba(255, 255, 255, 0.05); border-right: 4px solid var(--warning); padding: 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
         .flight-item.canceled { border-right-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         .btn-refresh { background: var(--accent); color: var(--bg); border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; max-width: 450px; font-size: 1rem; }
         .status-tag { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
-        .emergency { background: #450a0a !important; }
-        .time-label { font-size: 0.75rem; opacity: 0.6; display: block; }
     </style>
 </head>
 <body>
 
-    <button class="btn-refresh" onclick="updateDashboard()">🔄 רענן נתונים עכשיו</button>
+    <button class="btn-refresh" id="refreshBtn" onclick="updateDashboard()">🔄 רענן נתונים עכשיו</button>
 
     <div class="my-flight">
         <div style="font-size: 0.95rem; opacity: 0.9;">הטיסה שלי לרומא (IZ 1335):</div>
@@ -30,48 +27,98 @@
             <b style="font-size: 1.4rem;">04.02 | 07:00</b>
             <span id="my-flight-status" class="status-tag" style="background: #475569;">בדיקה...</span>
         </div>
-        <div id="countdown" class="countdown">מחשב זמן נותר...</div>
+        <div id="countdown" class="countdown">מחשב זמן...</div>
     </div>
 
-    <div class="card" id="main-card">
+    <div class="card">
         <div style="font-size: 0.9rem; color: #94a3b8;">מדד ביטולים ארקיע (48ש')</div>
         <div class="index-value" id="perc">--%</div>
-        <div id="trend-msg" style="font-weight: bold;">טוען נתונים...</div>
-        <div id="stats-text" style="font-size: 0.8rem; opacity: 0.6; margin-top: 8px;"></div>
+        <div id="trend-msg" style="font-weight: bold;">טוען...</div>
     </div>
 
-    <div class="flight-list">
-        <h3 style="font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 10px; display: flex; justify-content: space-between;">
-            <span>⚠️ טיסות בשיבוש / עיכוב:</span>
-            <span id="issue-count" style="font-size: 0.9rem; opacity: 0.7;">0</span>
-        </h3>
+    <div style="width: 100%; max-width: 450px;">
+        <h3 style="font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 10px;">⚠️ שיבושים ועיכובים:</h3>
         <div id="issues-container"></div>
     </div>
 
     <script>
+        // הקישור המקורי שלך
         const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcPr8CclZ7mS-U0EwU9lYx3L66O0vA3M_R88v/exec"; 
 
-        function updateCountdown() {
-            const flightDate = new Date("2026-02-04T07:00:00");
-            const now = new Date();
-            const diff = flightDate - now;
-            if (diff <= 0) { document.getElementById('countdown').innerText = "טיסה נעימה!"; return; }
-            const days = Math.floor(diff / 86400000);
-            const hours = Math.floor((diff % 86400000) / 3600000);
-            document.getElementById('countdown').innerText = `עוד ${days} ימים ו-${hours} שעות להמראה`;
-        }
-
         async function updateDashboard() {
-            const btn = document.querySelector('.btn-refresh');
-            btn.innerText = "מעדכן נתונים...";
+            const btn = document.getElementById('refreshBtn');
+            btn.innerText = "מעדכן...";
             
             try {
-                const res = await fetch(PROXY_URL);
+                // הוספת פרמטר אקראי כדי למנוע Cache של הדפדפן
+                const finalUrl = PROXY_URL + "?t=" + new Date().getTime();
+                
+                const res = await fetch(finalUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
+                
                 const data = await res.json();
                 const records = data.result.records;
-
-                // סינון ארקיע (IZ)
                 const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
                 
-                // סינון טיסות עם בעיות: מבוטלות או מעוכבות (Delayed) או כאלו שהסטטוס שלהן לא "בזמן"
-                const issues
+                // סינון בעיות
+                const issues = arkia.filter(f => 
+                    String(f.CHRMINE || "").includes('CANCELED') || 
+                    String(f.CHRMINE || "").includes('DELAYED')
+                );
+
+                const canceled = issues.filter(f => String(f.CHRMINE).includes('CANCELED'));
+                const p = Math.round((canceled.length / arkia.length) * 100) || 0;
+                
+                document.getElementById('perc').innerText = p + "%";
+                document.getElementById('trend-msg').innerText = p > 15 ? "🚨 שיבושים משמעותיים" : "✅ מצב יציב";
+                document.getElementById('trend-msg').style.color = p > 15 ? 'var(--danger)' : 'var(--success)';
+
+                // בדיקת הטיסה שלך
+                const myFlight = arkia.find(f => String(f.CHFLTN) === "1335");
+                const myStatusElem = document.getElementById('my-flight-status');
+                if (myFlight) {
+                    const status = String(myFlight.CHRMINE || "");
+                    myStatusElem.innerText = status.includes('CANCELED') ? "מבוטלת" : (status.includes('DELAYED') ? "מעוכבת" : "בזמן");
+                    myStatusElem.style.background = status.includes('CANCELED') ? 'var(--danger)' : (status.includes('DELAYED') ? 'var(--warning)' : 'var(--success)');
+                } else {
+                    myStatusElem.innerText = "טרם פורסמה";
+                }
+
+                // הצגת הרשימה
+                const container = document.getElementById('issues-container');
+                container.innerHTML = issues.length ? "" : "<div style='text-align:center; opacity:0.5;'>אין שיבושים כרגע</div>";
+                
+                issues.forEach(f => {
+                    const isCanceled = String(f.CHRMINE).includes('CANCELED');
+                    container.innerHTML += `
+                        <div class="flight-item ${isCanceled ? 'canceled' : ''}">
+                            <div><b>IZ ${f.CHFLTN}</b> ל${f.CHLOC1TH || '---'}</div>
+                            <span class="status-tag" style="background:${isCanceled ? 'var(--danger)' : 'var(--warning)'}">${isCanceled ? 'בוטלה' : 'עיכוב'}</span>
+                        </div>`;
+                });
+
+            } catch (e) {
+                console.error("Error:", e);
+                document.getElementById('trend-msg').innerText = "שגיאת חיבור - נסה שוב";
+            }
+            btn.innerText = "🔄 רענן נתונים עכשיו";
+        }
+
+        // טיימר
+        function updateCountdown() {
+            const diff = new Date("2026-02-04T07:00:00") - new Date();
+            if (diff <= 0) return document.getElementById('countdown').innerText = "טיסה נעימה!";
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            document.getElementById('countdown').innerText = `עוד ${d} ימים ו-${h} שעות להמראה`;
+        }
+
+        updateDashboard();
+        updateCountdown();
+        setInterval(updateCountdown, 60000);
+    </script>
+</body>
+</html>
