@@ -2,47 +2,107 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מנטר ביטולים ארקיע</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מנטר טיסות ארקיע - יריב</title>
     <style>
-        body { background: #0f172a; color: white; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 300px; }
-        .index { font-size: 5rem; font-weight: bold; color: #38bdf8; margin: 10px 0; }
-        .label { color: #94a3b8; font-size: 1rem; }
-        .details { font-size: 0.8rem; margin-top: 15px; color: #64748b; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --danger: #ef4444; --success: #22c55e; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155; margin-bottom: 20px; }
+        .index-value { font-size: 5rem; font-weight: 900; color: var(--accent); margin: 10px 0; line-height: 1; }
+        .my-flight { background: #1e293b; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; width: 100%; max-width: 400px; margin-bottom: 20px; position: relative; overflow: hidden; }
+        .my-flight::after { content: '✈️'; position: absolute; left: -10px; bottom: -10px; font-size: 4rem; opacity: 0.1; transform: rotate(-15deg); }
+        .canceled-list { width: 100%; max-width: 400px; text-align: right; }
+        .flight-item { background: rgba(239, 68, 68, 0.15); border-right: 4px solid var(--danger); padding: 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .status-tag { padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; }
+        .trend { font-size: 0.9rem; margin-top: 5px; font-weight: 500; }
     </style>
 </head>
 <body>
+
+    <div class="my-flight">
+        <div style="font-size: 0.95rem; opacity: 0.9;">הטיסה שלי לרומא (02.04):</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+            <b style="font-size: 1.5rem; letter-spacing: 1px;">IZ 1335</b>
+            <span id="my-flight-status" class="status-tag" style="background: #475569;">ממתין לנתונים</span>
+        </div>
+    </div>
+
     <div class="card">
-        <div class="label">מדד ביטולים ארקיע</div>
-        <div id="perc" class="index">--%</div>
-        <div id="status" class="label">טוען נתונים...</div>
-        <div id="stats" class="details"></div>
+        <div style="font-size: 1rem; color: #94a3b8; font-weight: 500;">מדד הביטולים של ארקיע (48ש')</div>
+        <div class="index-value" id="perc">--%</div>
+        <div id="trend-msg" class="trend">מחשב נתונים...</div>
+        <div id="stats-text" style="font-size: 0.85rem; color: #64748b; margin-top: 10px;"></div>
+    </div>
+
+    <div class="canceled-list">
+        <h3 style="font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px;">❌ טיסות שבוטלו לאחרונה:</h3>
+        <div id="canceled-container"></div>
     </div>
 
     <script>
-        // הדבק כאן את הקישור שקיבלת מגוגל בשלב 1
-        const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec"; 
+        // הקישור שלך מגוגל סקריפט (מעודכן לפי הצילום)
+        const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcPr8CclZ7mS-U0EwU9lYx3L66O0vA3M_R88v/exec"; 
 
-        async function init() {
+        async function updateDashboard() {
             try {
-                const r = await fetch(PROXY_URL);
-                const d = await r.json();
-                const flights = d.result.records;
+                const res = await fetch(PROXY_URL);
+                const data = await res.json();
+                const records = data.result.records;
 
-                // סינון ארקיע (IZ)
-                const arkia = flights.filter(f => String(f.CHOPER).includes('IZ'));
-                const canceled = arkia.filter(f => String(f.CHRMINE).includes('CANCELED')).length;
+                // 1. סינון לטיסות ארקיע בלבד (IZ)
+                const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
+                const canceledFlights = arkia.filter(f => String(f.CHRMINE || "").includes('CANCELED'));
                 
-                const p = Math.round((canceled / arkia.length) * 100) || 0;
-                
+                // 2. חישוב אחוזים ומגמה
+                const p = Math.round((canceledFlights.length / arkia.length) * 100) || 0;
                 document.getElementById('perc').innerText = p + "%";
-                document.getElementById('status').innerText = "עודכן מנתב\"ג";
-                document.getElementById('stats').innerText = `מתוך ${arkia.length} טיסות, ${canceled} בוטלו`;
+                
+                let trendMsg = "";
+                if (p < 5) trendMsg = "✅ מצב יציב מאוד";
+                else if (p < 15) trendMsg = "⚠️ שיבושים קלים בלוח";
+                else trendMsg = "🚨 רמת ביטולים גבוהה!";
+                
+                document.getElementById('trend-msg').innerText = trendMsg;
+                document.getElementById('trend-msg').style.color = p > 10 ? 'var(--danger)' : 'var(--success)';
+                document.getElementById('stats-text').innerText = `מתוך ${arkia.length} טיסות שפורסמו, ${canceledFlights.length} בוטלו`;
+
+                // 3. בדיקת הטיסה הספציפית שלך (IZ1335)
+                const myFlight = arkia.find(f => String(f.CHFLTN) === "1335");
+                const myStatusElem = document.getElementById('my-flight-status');
+                
+                if (myFlight) {
+                    const isCanceled = String(myFlight.CHRMINE).includes('CANCELED');
+                    myStatusElem.innerText = isCanceled ? "מבוטלת" : "בזמן";
+                    myStatusElem.style.background = isCanceled ? "var(--danger)" : "var(--success)";
+                } else {
+                    myStatusElem.innerText = "טרם פורסמה";
+                }
+
+                // 4. הצגת רשימת המבוטלות
+                const container = document.getElementById('canceled-container');
+                container.innerHTML = "";
+                
+                if (canceledFlights.length === 0) {
+                    container.innerHTML = "<div style='opacity:0.5; text-align:center;'>אין ביטולים כרגע. איזה יופי!</div>";
+                } else {
+                    canceledFlights.forEach(f => {
+                        container.innerHTML += `
+                            <div class="flight-item">
+                                <div><b>IZ ${f.CHFLTN}</b> ל${f.CHLOC1TH}</div>
+                                <div style="font-size: 0.85rem; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${f.CHSTOL.split('T')[1].substring(0,5)}</div>
+                            </div>`;
+                    });
+                }
+
             } catch (e) {
-                document.getElementById('status').innerText = "שגיאה בחיבור";
+                document.getElementById('perc').innerText = "??";
+                document.getElementById('trend-msg').innerText = "שגיאת תקשורת";
             }
         }
-        init();
+
+        updateDashboard();
+        // רענון אוטומטי כל 5 דקות כדי לא להעמיס על השרת
+        setInterval(updateDashboard, 300000); 
     </script>
 </body>
 </html>
