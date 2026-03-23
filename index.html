@@ -3,79 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מנטר טיסות ארקיע - מעודכן</title>
+    <title>Arkia Monitor</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; --success: #22c55e; --danger: #ef4444; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; text-align: right; }
-        .container { max-width: 500px; margin: 0 auto; }
-        .status-header { background: linear-gradient(135deg, #0284c7, #0369a1); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .risk-value { font-size: 3.5rem; font-weight: 900; margin: 10px 0; }
-        .flight-card { background: var(--card); padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #334155; }
-        button { background: var(--accent); color: #0f172a; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-        .loading-text { font-style: italic; color: var(--accent); }
+        body { background: #0f172a; color: white; font-family: system-ui, sans-serif; text-align: center; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { background: #1e293b; padding: 40px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); border: 1px solid #334155; width: 90%; max-width: 350px; }
+        .label { font-size: 0.9rem; color: #94a3b8; letter-spacing: 1px; }
+        .value { font-size: 5rem; font-weight: 900; color: #38bdf8; margin: 15px 0; }
+        .status { font-size: 1rem; color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 8px 15px; border-radius: 20px; display: inline-block; }
+        .error { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="status-header">
-            <div style="font-size:0.9rem; opacity:0.8;">מדד ביטולים ארקיע (48 שעות)</div>
-            <div class="risk-value" id="global-index">--%</div>
-            <div id="status-text">מתחבר ישירות למאגר הממשלתי...</div>
-        </div>
-        <div id="flights-list"></div>
-        <button onclick="fetchData()">🔄 רענן נתונים בזמן אמת</button>
+    <div class="card">
+        <div class="label">מדד ביטולים ארקיע (נתב"ג)</div>
+        <div id="perc" class="value">--%</div>
+        <div id="msg" class="status">מתחבר למאגר הממשלתי...</div>
     </div>
 
     <script>
-        // פתרון עוקף חסימות: שימוש ב-API הישיר של הממשלה עם מזהה המאגר החדש ביותר
-        async function fetchData() {
-            const statusBox = document.getElementById('status-text');
-            const list = document.getElementById('flights-list');
-            statusBox.innerText = "מושך נתונים מנתב\"ג...";
+        // הדבק כאן את הקישור החדש שקיבלת מגוגל (זה שנגמר ב-exec)
+        const API_URL = "הקישור_שלך_כאן"; 
 
-            // זה ה-Resource ID העדכני ביותר שנמצא כרגע במערכת
-            const RESOURCE_ID = "e83f7610-e348-4030-8a10-27297e30c2c1";
-            const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${RESOURCE_ID}&limit=300`;
-
+        async function loadData() {
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('הממשלה חוסמת את הבקשה');
+                const res = await fetch(API_URL);
+                const data = await res.json();
                 
-                const data = await response.json();
+                // סינון טיסות ארקיע
                 const records = data.result.records;
+                const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
+                
+                if (arkia.length === 0) {
+                    document.getElementById('msg').innerText = "אין טיסות ארקיע בלוח כרגע";
+                    return;
+                }
 
-                // סינון לטיסות ארקיע בלבד
-                const arkia = records.filter(f => 
-                    String(f.CHOPER || "").includes('IZ') || String(f.CHOPER || "").includes('ARKIA')
-                );
-
-                let canceled = 0;
-                list.innerHTML = "";
-
-                arkia.forEach(f => {
-                    const status = String(f.CHRMINE || "");
-                    const isCanceled = status.includes("CANCELED") || status.includes("מבוטלת");
-                    if (isCanceled) canceled++;
-
-                    const color = isCanceled ? 'var(--danger)' : 'var(--success)';
-                    list.innerHTML += `
-                        <div class="flight-card" style="border-right: 5px solid ${color}">
-                            <div><b>IZ ${f.CHFLTN}</b> | ${f.CHLOCCT}</div>
-                            <div style="color:${color}">${isCanceled ? 'מבוטלת' : 'בזמן'}</div>
-                        </div>`;
-                });
-
-                const perc = Math.round((canceled / arkia.length) * 100) || 0;
-                document.getElementById('global-index').innerText = perc + "%";
-                statusBox.innerText = "הנתונים עודכנו בהצלחה";
-
-            } catch (err) {
-                console.error(err);
-                statusBox.innerText = "שגיאה זמנית בשרת הממשלה. נסה שוב בעוד דקה.";
+                const canceled = arkia.filter(f => String(f.CHRMINE || "").includes('CANCELED')).length;
+                const perc = Math.round((canceled / arkia.length) * 100);
+                
+                document.getElementById('perc').innerText = perc + "%";
+                document.getElementById('msg').innerText = "מעודכן לזמן אמת";
+                
+            } catch (e) {
+                document.getElementById('perc').innerText = "!!";
+                document.getElementById('msg').innerText = "שגיאת חיבור";
+                document.getElementById('msg').className = "status error";
             }
         }
-
-        window.onload = fetchData;
+        loadData();
     </script>
 </body>
 </html>
