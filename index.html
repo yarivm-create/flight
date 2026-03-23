@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arkia Monitor | 02.04 Italy</title>
+    <title>Arkia Flight Monitor</title>
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
             --text: #f8fafc; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
         }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; text-align: right; }
         .container { max-width: 500px; margin: 0 auto; }
         .status-header { background: linear-gradient(135deg, #0284c7, #0369a1); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
         .risk-value { font-size: 3rem; font-weight: 900; margin: 10px 0; }
         .heatmap-container { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #334155; }
-        .destination-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .dest-tag { padding: 8px; border-radius: 8px; font-size: 0.75rem; text-align: center; background: #334155; border: 1px solid transparent; }
+        .destination-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .dest-tag { padding: 8px; border-radius: 8px; font-size: 0.75rem; text-align: center; background: #334155; border: 1px solid transparent; overflow: hidden; white-space: nowrap; }
         .high-risk { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         .low-risk { border-color: var(--success); color: var(--success); background: rgba(34, 197, 94, 0.1); }
-        .flight-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #334155; }
+        .flight-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #334155; align-items: center; }
         .prediction-box { background: #0c4a6e; border: 1px solid var(--accent); padding: 15px; border-radius: 15px; margin-top: 20px; }
-        button { background: var(--accent); color: #0f172a; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        button { background: var(--accent); color: #0f172a; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 10px; }
         .footer { text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 20px; }
     </style>
 </head>
@@ -30,11 +30,11 @@
     <div class="status-header">
         <div style="font-size:0.9rem; opacity:0.8;">מדד ביטולים ארקיע (כללי)</div>
         <div class="risk-value" id="global-index">--%</div>
-        <div id="risk-summary">טוען נתונים...</div>
+        <div id="risk-summary">מתחבר לנתוני נתב"ג...</div>
     </div>
 
     <div class="heatmap-container">
-        <div style="margin-bottom:10px; font-weight:bold; color:var(--accent);">מפת חום יעדים (ביטולים)</div>
+        <div style="font-weight:bold; color:var(--accent);">מפת חום יעדים (ביטולים)</div>
         <div class="destination-grid" id="heatmap-grid"></div>
     </div>
 
@@ -42,37 +42,48 @@
 
     <div class="prediction-box">
         <div style="color:var(--accent); font-weight:bold; margin-bottom:5px;">📍 תחזית איטליה (02.04)</div>
-        <div id="italy-forecast" style="font-size: 0.9rem; line-height: 1.5;">מנתח מגמות...</div>
+        <div id="italy-forecast" style="font-size: 0.9rem; line-height: 1.5;">ממתין לנתונים...</div>
     </div>
 
-    <button onclick="window.loadData()">🔄 עדכן נתונים (Live)</button>
+    <button id="refresh-btn">🔄 עדכן נתונים (Live)</button>
     
     <div class="footer" id="update-time"></div>
 </div>
 
 <script>
-    // שימוש ב-window כדי למנוע שגיאות "init is not defined"
-    window.loadData = async function() {
-        const API_URL = "https://data.gov.il/api/3/action/datastore_search?resource_id=e83f7610-e348-4030-8a10-27297e30c2c1&limit=500";
+    // הגדרת הפונקציות מחוץ לכל בלוק כדי שיהיו גלובליות
+    async function loadFlightData() {
+        const summary = document.getElementById('risk-summary');
+        const API_URL = "https://data.gov.il/api/3/action/datastore_search?resource_id=e83f7610-e348-4030-8a10-27297e30c2c1&limit=400";
+        
+        summary.innerText = "מושך נתונים מהשרת...";
+        
         try {
             const response = await fetch(API_URL);
-            const data = await response.json();
-            const allFlights = data.result.records;
+            if (!response.ok) throw new Error("Network response was not ok");
             
-            // סינון ארקיע בלבד
-            const arkiaFlights = allFlights.filter(f => {
-                const operator = String(f.CHOPER || "");
-                return operator.includes('IZ') || operator.includes('ARKIA');
+            const data = await response.json();
+            const records = data.result.records;
+            
+            // סינון ארקיע (IZ)
+            const arkia = records.filter(f => {
+                const op = String(f.CHOPER || "");
+                return op.includes('IZ') || op.includes('ARKIA');
             });
             
-            processFlights(arkiaFlights);
-        } catch (e) {
-            console.error(e);
-            document.getElementById('risk-summary').innerText = "שגיאה בחיבור לנתב\"ג";
-        }
-    };
+            if (arkia.length === 0) {
+                summary.innerText = "לא נמצאו טיסות ארקיע פעילות כרגע";
+                return;
+            }
 
-    function processFlights(flights) {
+            processAndRender(arkia);
+        } catch (err) {
+            console.error("Fetch error:", err);
+            summary.innerText = "שגיאה: ה-API של הממשלה לא מגיב";
+        }
+    }
+
+    function processAndRender(flights) {
         const grid = document.getElementById('heatmap-grid');
         const list = document.getElementById('flights-list');
         const stats = {};
@@ -82,5 +93,62 @@
         grid.innerHTML = "";
 
         flights.forEach(f => {
-            const dest = String(f.CHLOCCT || "").trim();
-            const
+            const dest = String(f.CHLOCCT || "לא ידוע").trim();
+            const status = String(f.CHRMINE || "").trim();
+            const isCanceled = status.includes("CANCELED") || status.includes("מבוטלת");
+
+            if (!stats[dest]) stats[dest] = { total: 0, canceled: 0 };
+            stats[dest].total++;
+            if (isCanceled) {
+                stats[dest].canceled++;
+                canceledTotal++;
+            }
+
+            if (list.children.length < 6) {
+                const color = isCanceled ? 'var(--danger)' : 'var(--success)';
+                list.innerHTML += `
+                    <div class="flight-card" style="border-right: 4px solid ${color}">
+                        <div>
+                            <div style="font-size:0.7rem; color:var(--accent)">IZ ${f.CHFLTN}</div>
+                            <div style="font-weight:bold; font-size:1.1rem;">${dest}</div>
+                        </div>
+                        <div style="color:${color}; font-weight:bold; font-size:0.8rem;">
+                            ${isCanceled ? 'מבוטלת' : 'בזמן'}
+                        </div>
+                    </div>`;
+            }
+        });
+
+        // חישוב אחוזים
+        const perc = Math.round((canceledTotal / flights.length) * 100);
+        document.getElementById('global-index').innerText = perc + "%";
+        document.getElementById('risk-summary').innerText = perc > 30 ? "רמת ביטולים גבוהה" : "פעילות יציבה";
+
+        // מפת חום
+        Object.keys(stats).slice(0, 9).forEach(d => {
+            const ratio = stats[d].canceled / stats[d].total;
+            const rClass = ratio > 0.2 ? 'high-risk' : (ratio > 0 ? 'low-risk' : '');
+            grid.innerHTML += `<div class="dest-tag ${rClass}">${d}</div>`;
+        });
+
+        // איטליה
+        const it = stats["ITALY"] || stats["איטליה"] || { total: 0, canceled: 0 };
+        const forecastElem = document.getElementById('italy-forecast');
+        if (it.total > 0) {
+            const r = Math.round((it.canceled / it.total) * 100);
+            forecastElem.innerText = r > 20 ? `נמצאו ביטולים לאיטליה (${r}%). מומלץ לעקוב מקרוב.` : `הקו לאיטליה יציב כרגע. הסיכוי לטיסה ב-02.04 טוב.`;
+        } else {
+            forecastElem.innerText = "לא זוהו טיסות לאיטליה ב-48 השעות האחרונות.";
+        }
+
+        document.getElementById('update-time').innerText = "עדכון אחרון: " + new Date().toLocaleTimeString('he-IL');
+    }
+
+    // הפעלה כשהדף מוכן
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFlightData();
+        document.getElementById('refresh-btn').addEventListener('click', loadFlightData);
+    });
+</script>
+</body>
+</html>
