@@ -2,55 +2,47 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arkia Monitor</title>
+    <title>מנטר ביטולים ארקיע</title>
     <style>
-        body { background: #0f172a; color: white; font-family: system-ui, sans-serif; text-align: center; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .card { background: #1e293b; padding: 40px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); border: 1px solid #334155; width: 90%; max-width: 350px; }
-        .label { font-size: 0.9rem; color: #94a3b8; letter-spacing: 1px; }
-        .value { font-size: 5rem; font-weight: 900; color: #38bdf8; margin: 15px 0; }
-        .status { font-size: 1rem; color: #22c55e; background: rgba(34, 197, 94, 0.1); padding: 8px 15px; border-radius: 20px; display: inline-block; }
-        .error { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        body { background: #0f172a; color: white; font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 300px; }
+        .index { font-size: 5rem; font-weight: bold; color: #38bdf8; margin: 10px 0; }
+        .label { color: #94a3b8; font-size: 1rem; }
+        .details { font-size: 0.8rem; margin-top: 15px; color: #64748b; }
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="label">מדד ביטולים ארקיע (נתב"ג)</div>
-        <div id="perc" class="value">--%</div>
-        <div id="msg" class="status">מתחבר למאגר הממשלתי...</div>
+        <div class="label">מדד ביטולים ארקיע</div>
+        <div id="perc" class="index">--%</div>
+        <div id="status" class="label">טוען נתונים...</div>
+        <div id="stats" class="details"></div>
     </div>
 
     <script>
-        // הדבק כאן את הקישור החדש שקיבלת מגוגל (זה שנגמר ב-exec)
-        const API_URL = "הקישור_שלך_כאן"; 
+        // הדבק כאן את הקישור שקיבלת מגוגל בשלב 1
+        const PROXY_URL = "הקישור_שלך_כאן"; 
 
-        async function loadData() {
+        async function init() {
             try {
-                const res = await fetch(API_URL);
-                const data = await res.json();
-                
-                // סינון טיסות ארקיע
-                const records = data.result.records;
-                const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
-                
-                if (arkia.length === 0) {
-                    document.getElementById('msg').innerText = "אין טיסות ארקיע בלוח כרגע";
-                    return;
-                }
+                const r = await fetch(PROXY_URL);
+                const d = await r.json();
+                const flights = d.result.records;
 
-                const canceled = arkia.filter(f => String(f.CHRMINE || "").includes('CANCELED')).length;
-                const perc = Math.round((canceled / arkia.length) * 100);
+                // סינון ארקיע (IZ)
+                const arkia = flights.filter(f => String(f.CHOPER).includes('IZ'));
+                const canceled = arkia.filter(f => String(f.CHRMINE).includes('CANCELED')).length;
                 
-                document.getElementById('perc').innerText = perc + "%";
-                document.getElementById('msg').innerText = "מעודכן לזמן אמת";
+                const p = Math.round((canceled / arkia.length) * 100) || 0;
                 
+                document.getElementById('perc').innerText = p + "%";
+                document.getElementById('status').innerText = "עודכן מנתב\"ג";
+                document.getElementById('stats').innerText = `מתוך ${arkia.length} טיסות, ${canceled} בוטלו`;
             } catch (e) {
-                document.getElementById('perc').innerText = "!!";
-                document.getElementById('msg').innerText = "שגיאת חיבור";
-                document.getElementById('msg').className = "status error";
+                document.getElementById('status').innerText = "שגיאה בחיבור";
             }
         }
-        loadData();
+        init();
     </script>
 </body>
 </html>
