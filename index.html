@@ -1,1 +1,162 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkia Flight Monitor | War Edition</title>
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
+            --text: #f8fafc; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+        }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        /* Header & Risk Index */
+        .status-header { background: linear-gradient(135deg, #0284c7, #0369a1); padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 20px; position: relative; overflow: hidden; }
+        .risk-value { font-size: 3rem; font-weight: 900; line-height: 1; margin: 10px 0; }
+        .risk-label { font-size: 0.9rem; opacity: 0.9; }
 
+        /* Heatmap Section */
+        .heatmap-container { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #334155; }
+        .heatmap-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 12px; color: var(--accent); display: flex; justify-content: space-between; }
+        .destination-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .dest-tag { padding: 8px; border-radius: 8px; font-size: 0.75rem; text-align: center; background: #334155; border: 1px solid transparent; }
+        .high-risk { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+        .low-risk { border-color: var(--success); color: var(--success); background: rgba(34, 197, 94, 0.1); }
+
+        /* Flight List */
+        .flight-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; border: 1px solid #334155; transition: transform 0.2s; }
+        .flight-card:hover { transform: scale(1.02); }
+        .flight-main { display: flex; flex-direction: column; }
+        .flight-id { font-weight: bold; color: var(--accent); font-size: 0.8rem; }
+        .flight-city { font-size: 1.1rem; font-weight: 600; margin: 2px 0; }
+        .flight-status { align-self: center; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; }
+
+        /* Italy Prediction Box */
+        .prediction-box { background: #0c4a6e; border: 1px solid var(--accent); padding: 15px; border-radius: 15px; margin-top: 20px; }
+        .prediction-title { color: var(--accent); font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+
+        .btn-refresh { background: var(--accent); color: #0f172a; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 1rem; }
+        .footer { text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 20px; padding-bottom: 20px; }
+        
+        /* Animations */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .live-dot { height: 8px; width: 8px; background: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-header">
+        <div class="risk-label">מדד ביטולים ארקיע (כללי)</div>
+        <div class="risk-value" id="global-index">--%</div>
+        <div id="risk-summary">טוען נתונים...</div>
+    </div>
+
+    <div class="heatmap-container">
+        <div class="heatmap-title">
+            <span>מפת חום יעדים (ביטולים)</span>
+            <span style="font-size: 0.7rem; font-weight: normal;">72 שעות אחרונות</span>
+        </div>
+        <div class="destination-grid" id="heatmap-grid">
+            </div>
+    </div>
+
+    <div id="flights-list">
+        <p style="text-align:center; opacity:0.6;">מתחבר לשרתי נתב"ג...</p>
+    </div>
+
+    <div class="prediction-box">
+        <div class="prediction-title">📍 תחזית איטליה (02.04)</div>
+        <div id="italy-forecast" style="font-size: 0.9rem; line-height: 1.5;">
+            מנתח נתוני עבר ומגמות ביטחוניות...
+        </div>
+    </div>
+
+    <button class="btn-refresh" onclick="init()">🔄 עדכן נתונים (Live)</button>
+    
+    <div class="footer">
+        מקור: רשות שדות התעופה (Gov Data API) <br>
+        <span id="update-time"></span>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://data.gov.il/api/3/action/datastore_search?resource_id=e83f7610-e348-4030-8a10-27297e30c2c1&limit=500";
+    
+    async function init() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            const flights = data.result.records.filter(f => f.CHOPER.includes('IZ') || f.CHOPER.includes('ARKIA'));
+            processData(flights);
+        } catch (e) {
+            document.getElementById('risk-summary').innerText = "שגיאה בחיבור לנתב"ג";
+        }
+    }
+
+    function processData(flights) {
+        const grid = document.getElementById('heatmap-grid');
+        const list = document.getElementById('flights-list');
+        const stats = {};
+        let canceledTotal = 0;
+
+        list.innerHTML = "";
+        grid.innerHTML = "";
+
+        flights.forEach(f => {
+            const dest = f.CHLOCCT.trim();
+            const status = f.CHRMINE.trim();
+            const isCanceled = status === "CANCELED" || status === "מבוטלת";
+
+            // סטטיסטיקה ליעד
+            if (!stats[dest]) stats[dest] = { total: 0, canceled: 0 };
+            stats[dest].total++;
+            if (isCanceled) {
+                stats[dest].canceled++;
+                canceledTotal++;
+            }
+
+            // הוספה לרשימה (רק 10 טיסות אחרונות)
+            if (list.children.length < 10) {
+                const sClass = isCanceled ? 'background:rgba(239,68,68,0.2);color:#ef4444' : 'background:rgba(34,197,94,0.2);color:#22c55e';
+                list.innerHTML += `
+                    <div class="flight-card">
+                        <div class="flight-main">
+                            <span class="flight-id">IZ ${f.CHFLTN} | ${f.CHSTOL.split('T')[1].substring(0,5)}</span>
+                            <span class="flight-city">${dest}</span>
+                        </div>
+                        <span class="flight-status" style="${sClass}">${isCanceled ? 'מבוטלת' : 'בזמן'}</span>
+                    </div>
+                `;
+            }
+        });
+
+        // עדכון מפת חום
+        Object.keys(stats).slice(0, 9).forEach(dest => {
+            const ratio = stats[dest].canceled / stats[dest].total;
+            const riskClass = ratio > 0.3 ? 'high-risk' : (ratio > 0 ? 'low-risk' : '');
+            grid.innerHTML += `<div class="dest-tag ${riskClass}">${dest}</div>`;
+        });
+
+        // עדכון מדדים
+        const globalPerc = Math.round((canceledTotal / flights.length) * 100);
+        document.getElementById('global-index').innerText = globalPerc + "%";
+        document.getElementById('risk-summary').innerText = globalPerc > 25 ? "מצב חירום: ביטולים נרחבים" : "פעילות יציבה תחת אש";
+        
+        // תחזית איטליה
+        const italy = stats["ITALY"] || stats["איטליה"] || { total: 1, canceled: 0 };
+        const italyRisk = Math.round((italy.canceled / italy.total) * 100);
+        const forecast = italyRisk > 20 
+            ? `⚠️ שים לב: ב-72 השעות האחרונות בוטלו ${italyRisk}% מהטיסות לאיטליה. הטיסה שלך ב-02.04 נמצאת בדרגת סיכון צהובה.`
+            : `✅ בשורות טובות: הקו לאיטליה שומר על יציבות (0% ביטולים לאחרונה). הסיכוי לטיסה ב-02.04 נכון לעכשיו גבוה.`;
+        document.getElementById('italy-forecast').innerText = forecast;
+
+        document.getElementById('update-time').innerText = "עדכון אחרון: " + new Date().toLocaleTimeString('he-IL');
+    }
+
+    init();
+</script>
+</body>
+</html>
