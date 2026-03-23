@@ -51,7 +51,7 @@
 
     <script>
         // *** הדבק כאן את הקישור שקיבלת מה-New Deployment בגוגל ***
-        const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec"; 
+        const PROXY_URL = "הקישור_החדש_שלך_כאן"; 
 
         async function updateDashboard() {
             const btn = document.getElementById('refreshBtn');
@@ -91,4 +91,59 @@
                 const myFlight = arkia.find(f => String(f.CHFLTN) === "1335");
                 const myStatusElem = document.getElementById('my-flight-status');
                 if (myFlight) {
-                    const statusText = String(myFlight.CHRM
+                    const statusText = String(myFlight.CHRMINE || "");
+                    const isCanceled = statusText.includes('CANCELED');
+                    const isDelayed = statusText.includes('DELAYED');
+                    
+                    myStatusElem.innerText = isCanceled ? "מבוטלת" : (isDelayed ? "מעוכבת" : "בזמן");
+                    myStatusElem.style.background = isCanceled ? "var(--danger)" : (isDelayed ? "var(--warning)" : "var(--success)");
+                } else {
+                    myStatusElem.innerText = "טרם פורסמה";
+                    myStatusElem.style.background = "#475569";
+                }
+
+                // ריקון והצגת כל הטיסות הבעייתיות
+                const container = document.getElementById('issues-container');
+                container.innerHTML = "";
+                
+                if (issues.length === 0) {
+                    container.innerHTML = "<div style='opacity:0.5; text-align:center; padding:20px;'>אין שיבושים כרגע. הכל תקין!</div>";
+                } else {
+                    issues.forEach(f => {
+                        const isCanceled = String(f.CHRMINE).includes('CANCELED');
+                        const time = f.CHSTOL.split('T')[1].substring(0,5);
+                        container.innerHTML += `
+                            <div class="flight-item ${isCanceled ? 'canceled' : ''}">
+                                <div>
+                                    <span class="time-label">שעה מתוכננת: ${time}</span>
+                                    <b>IZ ${f.CHFLTN}</b> ל${f.CHLOC1TH || '---'}
+                                </div>
+                                <span class="status-tag" style="background: ${isCanceled ? 'var(--danger)' : 'var(--warning)'}">${isCanceled ? 'מבוטלת' : 'שיבוש'}</span>
+                            </div>`;
+                    });
+                }
+
+            } catch (e) {
+                trendElem.innerText = "שגיאת תקשורת. נסה שוב.";
+                trendElem.style.color = "var(--danger)";
+            }
+            btn.innerText = "🔄 רענן נתונים עכשיו";
+        }
+
+        // טיימר לטיסה לרומא
+        function updateCountdown() {
+            const flightDate = new Date("2026-02-04T07:00:00");
+            const diff = flightDate - new Date();
+            if (diff <= 0) { document.getElementById('countdown').innerText = "טיסה נעימה!"; return; }
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            document.getElementById('countdown').innerText = `עוד ${d} ימים ו-${h} שעות להמראה`;
+        }
+
+        updateDashboard();
+        updateCountdown();
+        setInterval(updateCountdown, 60000); // עדכון טיימר כל דקה
+        setInterval(updateDashboard, 300000); // רענון נתונים אוטומטי כל 5 דקות
+    </script>
+</body>
+</html>
