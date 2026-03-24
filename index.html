@@ -2,174 +2,80 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flight Intelligence - IZ 1335</title>
+    <title>IZ 1335 Monitor - Arkia Live Scan</title>
     <style>
-        :root {
-            --bg: #020617;
-            --card: #0f172a;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --primary: #38bdf8;
-            --success: #10b981;
-            --text: #f8fafc;
-        }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
-        .container { max-width: 550px; margin: auto; }
-        
-        /* דאשבורד מרכזי */
-        .main-card {
-            background: linear-gradient(160deg, #1e293b, #0f172a);
-            border-radius: 30px; padding: 25px; text-align: center;
-            border: 2px solid var(--danger); margin-bottom: 20px;
-            box-shadow: 0 25px 50px -12px rgba(239, 68, 68, 0.3);
-            position: relative;
-        }
-        .score-display { font-size: 85px; font-weight: 900; line-height: 1; margin: 10px 0; letter-spacing: -4px; color: var(--danger); }
-        
-        /* מידע על הטיסה שלך */
-        .my-flight-status {
-            background: rgba(56, 189, 248, 0.1); border: 1px solid var(--primary);
-            border-radius: 15px; padding: 12px; margin-bottom: 20px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        /* תיבת תובנות מאתרי החדשות */
-        .insight-box {
-            background: rgba(255, 77, 77, 0.05); border-radius: 20px; 
-            padding: 20px; margin-bottom: 20px; border-right: 5px solid var(--danger);
-        }
-        .insight-body { font-size: 13px; line-height: 1.6; color: #cbd5e1; }
-
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stat-item { background: var(--card); padding: 12px; border-radius: 15px; border: 1px solid #1e293b; text-align: center; }
-        .stat-item small { display: block; font-size: 10px; opacity: 0.6; }
-
-        /* רשימת שיבושים */
-        .scroll-list { background: #000; border-radius: 16px; max-height: 250px; overflow-y: auto; border: 1px solid #1e293b; }
-        .flight-entry { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #111827; font-size: 13px; }
-        .badge-red { background: rgba(239, 68, 68, 0.2); color: var(--danger); font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-
-        /* כפתור ריפרש */
-        .refresh-btn {
-            background: var(--primary); color: #000; border: none; padding: 10px 20px;
-            border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s;
-            display: flex; align-items: center; gap: 8px; margin: 10px auto;
-        }
-        .refresh-btn:hover { transform: scale(1.05); opacity: 0.9; }
-        .last-update { font-size: 11px; opacity: 0.5; margin-top: 5px; }
+        :root { --danger: #ef4444; --bg: #020617; --card: #0f172a; --primary: #38bdf8; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #f8fafc; padding: 15px; margin: 0; }
+        .container { max-width: 500px; margin: auto; }
+        .main-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 25px; padding: 30px; text-align: center; border: 2px solid var(--danger); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .score { font-size: 90px; font-weight: 900; line-height: 1; margin: 15px 0; color: var(--danger); }
+        .flag-pill { display: inline-block; background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin: 3px; border: 1px solid var(--danger); }
+        .refresh-btn { background: var(--primary); color: #000; border: none; padding: 15px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 20px; font-size: 16px; }
+        .status-box { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; margin: 15px 0; border-right: 4px solid var(--primary); text-align: right; }
+        .flight-info { background: #1e293b; padding: 15px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="main-card">
-        <div style="font-size: 12px; opacity: 0.8;">הסתברות משוקללת לביטול (02.04)</div>
-        <div id="riskScore" class="score-display">--%</div>
-        <div id="statusLabel" style="font-size: 22px; font-weight: bold; color: var(--danger);">מנתח נתונים...</div>
-        <div id="updateTime" class="last-update">עדכון אחרון: --:--</div>
-        
-        <button class="refresh-btn" onclick="runIntelligence()">
-            <span>🔄 רענן נתונים</span>
-        </button>
+        <div style="font-size: 12px; opacity: 0.7;">סיכוי ביטול IZ 1335 (02.04)</div>
+        <div id="riskScore" class="score">--%</div>
+        <div id="statusLabel" style="font-size: 22px; font-weight: bold;">מנתח אתר ארקיע...</div>
+        <div id="updateTime" style="font-size: 11px; opacity: 0.5; margin-top: 10px;"></div>
+        <button class="refresh-btn" onclick="fetchData()">🔄 סרוק אתר ארקיע עכשיו</button>
     </div>
 
-    <div class="my-flight-status">
-        <div>טיסה: <b>IZ 1335</b> (לרומא)</div>
-        <div id="myFlightResult" style="color: var(--warning); font-weight: bold;">בבדיקה...</div>
+    <div class="status-box">
+        <div style="font-weight: bold; color: var(--primary); margin-bottom: 10px;">🚩 מילות מפתח שזוהו באתר ארקיע (Live):</div>
+        <div id="flagContainer">מחפש "50 נוסעים", "שאגת הארי", "ביטולים"...</div>
     </div>
 
-    <div class="insight-box">
-        <div id="newsInsight" class="insight-body">קורא עדכונים מאתרי ארקיע ו-PassportNews...</div>
+    <div class="flight-info">
+        <span>טיסה: <b>IZ 1335</b> (רומא)</span>
+        <span id="flightStatus" style="color: var(--danger); font-weight: bold;">בסיכון קריטי</span>
     </div>
-
-    <div class="stats-grid">
-        <div class="stat-item"><small>ביטולי נתב"ג (כללי)</small><b id="natbagRate">--</b></div>
-        <div class="stat-item"><small>ביטולי ארקיע (48ש')</small><b id="arkiaCanceledCount">0</b></div>
-        <div class="stat-item"><small>מתווה 'שאגת הארי'</small><b id="warIndex">פעיל</b></div>
-        <div class="stat-item"><small>מגבלת 50 נוסעים</small><b id="passLimit">זוהתה</b></div>
-    </div>
-
-    <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; color: var(--danger);">⚠️ שיבושים וביטולים בארקיע (זמן אמת):</div>
-    <div id="flightList" class="scroll-list"></div>
 </div>
 
 <script>
-    const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec"; 
+    const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec";
 
-    async function runIntelligence() {
-        const statusLabel = document.getElementById('statusLabel');
-        statusLabel.innerText = "סורק...";
-        
+    async function fetchData() {
         try {
-            const response = await fetch(PROXY_URL);
-            const data = await response.json();
-            const records = data.result.records;
-
-            // 1. ניתוח API - אחוז ביטולים כללי
-            const totalCanceled = records.filter(f => String(f.CHRMINE || "").includes('CANCELED')).length;
-            const natbagRate = (totalCanceled / records.length) * 100;
-
-            // 2. ניתוח ארקיע - ביטולים ודחיות
-            const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
-            const arkiaIssues = arkia.filter(f => 
-                String(f.CHRMINE || "").includes('CANCELED') || 
-                String(f.CHRMINE || "").includes('DELAYED') ||
-                (f.CHPTOL && f.CHSTOL !== f.CHPTOL)
-            );
-
-            // 3. חיפוש ספציפי לטיסה IZ 1335 (אם מופיעה בלוח ל-48 שעות הקרובות)
-            const myFlight = records.find(f => String(f.CHFLTN).includes('1335'));
-            const myFlightResult = document.getElementById('myFlightResult');
+            const res = await fetch(PROXY_URL);
+            const data = await res.json();
             
-            // 4. לוגיקה משולבת (אתרים + API)
-            // רצפת סיכון 85% בגלל הודעת ארקיע (ביטול עד 04.04)
-            let risk = 85 + (natbagRate * 0.1);
-            if (risk > 98) risk = 98;
+            const flags = data.arkiaLive.foundFlags;
+            const records = data.records;
 
-            updateUI(Math.round(risk), natbagRate, arkiaIssues, myFlight);
+            // עדכון מילות מפתח ב-UI
+            const flagContainer = document.getElementById('flagContainer');
+            if (flags.length > 0) {
+                flagContainer.innerHTML = flags.map(f => `<span class="flag-pill">${f}</span>`).join('');
+            } else {
+                flagContainer.innerHTML = "לא נמצאו מילות מפתח חריגות כרגע.";
+            }
 
+            // חישוב ציון (אם נמצאו מילים כמו "50 נוסעים" או "ביטול" - הציון קופץ)
+            let score = 20;
+            if (flags.includes("50 נוסעים")) score += 30;
+            if (flags.includes("ביטול") || flags.includes("4.4")) score += 40;
+            if (flags.includes("שאגת הארי")) score += 5;
+            
+            if (score > 98) score = 98;
+
+            // עדכון UI
+            document.getElementById('riskScore').innerText = score + "%";
+            document.getElementById('updateTime').innerText = "סריקה אחרונה: " + data.arkiaLive.timestamp;
+            document.getElementById('statusLabel').innerText = score > 70 ? "מתווה חירום פעיל 🚨" : "שגרה יחסית";
+            
         } catch (e) {
-            statusLabel.innerText = "שגיאת תקשורת";
+            console.error(e);
+            document.getElementById('statusLabel').innerText = "שגיאת תקשורת";
         }
     }
 
-    function updateUI(score, nRate, issues, myFlight) {
-        document.getElementById('riskScore').innerText = score + "%";
-        document.getElementById('natbagRate').innerText = Math.round(nRate) + "%";
-        document.getElementById('arkiaCanceledCount').innerText = issues.filter(f => String(f.CHRMINE).includes('CANCELED')).length;
-        document.getElementById('updateTime').innerText = "עדכון אחרון: " + new Date().toLocaleTimeString();
-        document.getElementById('statusLabel').innerText = score > 90 ? "סיכון קריטי 🚨" : "סיכון גבוה ⚠️";
-
-        // עדכון סטטוס הטיסה IZ 1335
-        const myResult = document.getElementById('myFlightResult');
-        if (myFlight) {
-            const isC = String(myFlight.CHRMINE).includes('CANCELED');
-            myResult.innerText = isC ? "בוטלה במערכת" : "רשומה כסדירה (בסיכון)";
-            myResult.style.color = isC ? "var(--danger)" : "var(--warning)";
-        } else {
-            myResult.innerText = "טרם הופיעה בלוח / בוטלה גורפת";
-        }
-
-        // תובנה מהאתרים
-        document.getElementById('newsInsight').innerHTML = `
-            <b>סיכום מודיעין מהאתרים:</b><br>
-            • ארקיע: ביטול לו"ז סדיר עד 04.04 (כולל IZ 1335).<br>
-            • PassportNews: מתווה 50 נוסעים מיושם בנתב"ג.<br>
-            • הצלבה: ה-API מראה ${Math.round(nRate)}% ביטולים כלליים - תואם מתווה חירום.
-        `;
-
-        // רשימת שיבושים
-        const list = document.getElementById('flightList');
-        list.innerHTML = issues.map(f => `
-            <div class="flight-entry">
-                <span><b>IZ ${f.CHFLTN}</b> ל${f.CHLOC1TH || '---'}</span>
-                <span class="badge-red">${String(f.CHRMINE).includes('CANCELED') ? 'ביטול' : 'עיכוב/שיבוש'}</span>
-            </div>
-        `).join('') || "<div style='padding:20px; text-align:center; opacity:0.5;'>לא נמצאו ביטולים בארקיע ב-API כרגע</div>";
-    }
-
-    runIntelligence(); // הפעלה ראשונית
+    fetchData();
 </script>
 </body>
 </html>
