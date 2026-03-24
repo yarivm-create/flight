@@ -2,75 +2,117 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>ניטור טיסה 02.04 - ארקיע</title>
+    <title>מנטר טיסה IZ 1335</title>
     <style>
-        :root { --danger: #ef4444; --bg: #0d1117; --primary: #58a6ff; --warning: #f59e0b; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { background: #161b22; border-radius: 24px; padding: 30px; border: 1px solid #30363d; width: 420px; text-align: center; }
-        .main-score { font-size: 80px; font-weight: 900; color: var(--danger); margin: 5px 0; }
-        .conclusion-box { background: rgba(88,166,255,0.05); border: 1px solid var(--primary); padding: 15px; border-radius: 12px; text-align: right; margin-top: 20px; }
-        .conclusion-title { color: var(--primary); font-weight: bold; font-size: 14px; margin-bottom: 5px; border-bottom: 1px solid var(--primary); display: inline-block; }
-        .stat-line { font-size: 13px; margin: 8px 0; display: flex; justify-content: space-between; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
+        :root { --danger: #ef4444; --bg: #0d1117; --primary: #58a6ff; --card: #161b22; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { background: var(--card); border-radius: 24px; padding: 30px; border: 1px solid #30363d; width: 420px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* כותרת וציון */
+        .header-text { font-size: 14px; opacity: 0.6; margin-bottom: 10px; }
+        .main-score { font-size: 85px; font-weight: 900; color: var(--danger); line-height: 1; margin: 10px 0; letter-spacing: -2px; }
+        
+        /* טבלת נתונים */
+        .stats-container { margin: 25px 0; text-align: right; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #30363d; }
+        .stat-label { font-size: 14px; color: #8b949e; }
+        .stat-value { font-size: 16px; font-weight: bold; }
+        .cancel-badge { background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 2px 10px; border-radius: 20px; font-size: 14px; }
+
+        /* תיבת שורה תחתונה */
+        .conclusion-card { background: rgba(88, 166, 255, 0.07); border: 1px border-left: 4px solid var(--primary); padding: 15px; border-radius: 12px; text-align: right; margin-top: 15px; }
+        .conclusion-title { color: var(--primary); font-weight: bold; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+
+        /* כפתור רענון */
+        .refresh-btn { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .refresh-btn:hover { filter: brightness(1.2); }
+        .refresh-btn:active { transform: scale(0.98); }
+
+        .update-time { font-size: 11px; opacity: 0.4; margin-top: 15px; }
+        
+        /* אנימציית טעינה */
+        .spinning { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(-360deg); } }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div style="font-size: 12px; opacity: 0.6;">סיכוי לשינוי מתווה (02.04)</div>
+    <div class="header-text">הסתברות לשינוי מתווה (02.04)</div>
     <div id="riskScore" class="main-score">--%</div>
-    
-    <div style="padding: 10px;">
-        <div class="stat-line"><span>ביטולי ארקיע היום (נתב"ג):</span> <b id="cancelCount" style="color:var(--danger)">--</b></div>
-        <div class="stat-line"><span>סטטוס הטיסה שלך (02.04):</span> <b id="myFlight">סורק...</b></div>
+
+    <div class="stats-container">
+        <div class="stat-row">
+            <span class="stat-label">ביטולי ארקיע היום (נתב"ג):</span>
+            <span id="cancelCount" class="cancel-badge">--</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">סטטוס הטיסה שלך (02.04):</span>
+            <span id="flightStatus" class="stat-value">סורק...</span>
+        </div>
     </div>
 
-    <div class="conclusion-box">
+    <div class="conclusion-card">
         <div class="conclusion-title">📍 השורה התחתונה:</div>
-        <div id="conclusionText" style="font-size: 14px; line-height: 1.5;">מנתח נתונים מהמקורות...</div>
+        <div id="conclusionText" style="font-size: 14px; line-height: 1.5;">מנתח נתונים בזמן אמת...</div>
     </div>
-    
-    <div id="updateTime" style="font-size: 10px; opacity: 0.4; margin-top: 20px;"></div>
+
+    <button class="refresh-btn" onclick="update()">
+        <span id="refreshIcon">🔄</span>
+        רענן נתונים (Live)
+    </button>
+
+    <div id="updateTime" class="update-time">עדכון אחרון: --</div>
 </div>
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec";
 
     async function update() {
+        const btn = document.querySelector('.refresh-btn');
+        const icon = document.getElementById('refreshIcon');
+        
+        // התחלת אנימציית טעינה
+        btn.disabled = true;
+        icon.classList.add('spinning');
+        
         try {
             const res = await fetch(SCRIPT_URL);
             const data = await res.json();
             
+            // עדכון ערכים
             document.getElementById('cancelCount').innerText = data.arkiaStats.totalCancelled;
-            document.getElementById('myFlight').innerText = data.arkiaStats.myFlightStatus;
-
-            // לוגיקת המסקנה
+            document.getElementById('flightStatus').innerText = data.arkiaStats.myFlightStatus;
+            
             let score = 10;
             let conclusion = "";
 
             if (data.mתווהDetected) {
                 score = 95;
                 conclusion = "זוהה מתווה 'שאגת הארי' המציין שטיסות רומא הועברו לטאבה. הסיכוי לטיסה רגילה מנתב\"ג אפסי.";
-            } else if (data.arkiaStats.totalCancelled > 10) {
-                score = 60;
-                conclusion = "יש גל ביטולים משמעותי בארקיע כרגע. למרות שרומא עוד לא הופיעה כמבוטלת, יש סיכון גבוה לשינוי.";
+            } else if (data.arkiaStats.totalCancelled > 5) {
+                score = 65;
+                conclusion = "ישנה מגמת ביטולים בארקיע בנתב\"ג. למרות שהטיסה שלך טרם בוטלה, הסיכון עולה.";
             } else {
-                conclusion = "כרגע אין אינדיקציה לביטול גורף, אך מומלץ לעקוב אחר הודעות מארקיע.";
-            }
-
-            if (data.arkiaStats.myFlightStatus.includes("מבוטלת")) {
-                score = 100;
-                conclusion = "הטיסה בוטלה רשמית בלוח נתב\"ג. פעל לפי הנחיות ארקיע למתווה חילוץ.";
+                conclusion = "כרגע אין אינדיקציה לשינוי גורף בלוח הטיסות הספציפי.";
             }
 
             document.getElementById('riskScore').innerText = score + "%";
             document.getElementById('conclusionText').innerText = conclusion;
-            document.getElementById('riskScore').style.color = score > 80 ? "var(--danger)" : (score > 40 ? "var(--warning)" : "var(--primary)");
-            document.getElementById('updateTime').innerText = "עדכון אחרון: " + data.time;
+            document.getElementById('updateTime').innerText = "סנכרון אחרון: " + data.time;
 
-        } catch(e) { document.getElementById('conclusionText').innerText = "שגיאה בחיבור לשרת הניטור."; }
+        } catch(e) {
+            document.getElementById('conclusionText').innerText = "שגיאה בחיבור לשרת הניטור. בדוק את חיבור האינטרנט.";
+        } finally {
+            // סיום אנימציה
+            btn.disabled = false;
+            icon.classList.remove('spinning');
+        }
     }
+
+    // הפעלה ראשונית
     update();
-    setInterval(update, 300000);
 </script>
+
 </body>
 </html>
