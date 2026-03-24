@@ -4,80 +4,111 @@
     <meta charset="UTF-8">
     <title>מכ"ם טיסות IZ 1335 - Live</title>
     <style>
-        :root { --danger: #ef4444; --bg: #020617; --primary: #38bdf8; --card: #0f172a; }
+        :root { --danger: #ef4444; --bg: #020617; --primary: #38bdf8; --card: #0f172a; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #f8fafc; padding: 15px; margin: 0; }
         .container { max-width: 500px; margin: auto; }
-        .main-card { background: #111827; border-radius: 25px; padding: 25px; text-align: center; border: 2px solid var(--danger); box-shadow: 0 10px 40px rgba(239, 68, 68, 0.2); }
-        .score { font-size: 80px; font-weight: 900; color: var(--danger); margin: 5px 0; }
+        .main-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 25px; padding: 25px; text-align: center; border: 2px solid var(--danger); box-shadow: 0 10px 40px rgba(239, 68, 68, 0.2); }
+        .score { font-size: 80px; font-weight: 900; color: var(--danger); margin: 5px 0; letter-spacing: -2px; }
         .info-box { background: var(--card); padding: 15px; border-radius: 15px; margin-top: 15px; border-right: 4px solid var(--primary); text-align: right; }
-        .flag-pill { display: inline-block; background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 4px 10px; border-radius: 10px; font-size: 12px; margin: 3px; border: 1px solid var(--danger); }
-        button { background: var(--primary); color: black; border: none; padding: 15px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 15px; font-size: 16px; }
-        .flight-status { display: flex; justify-content: space-between; padding: 10px; background: #1e293b; border-radius: 10px; margin-top: 10px; font-weight: bold; }
+        .flag-pill { display: inline-block; background: rgba(239, 68, 68, 0.1); color: var(--primary); padding: 4px 10px; border-radius: 10px; font-size: 12px; margin: 3px; border: 1px solid rgba(56, 189, 248, 0.3); }
+        .flag-pill.danger { color: var(--danger); border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+        button { background: var(--primary); color: black; border: none; padding: 15px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 15px; font-size: 16px; transition: 0.3s; }
+        button:hover { transform: scale(1.02); opacity: 0.9; }
+        .flight-status { display: flex; justify-content: space-between; padding: 12px; background: #1e293b; border-radius: 12px; margin-top: 10px; font-weight: bold; border: 1px solid #334155; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="main-card">
-        <div style="font-size: 12px; opacity: 0.7;">סיכוי ביטול IZ 1335 (02.04)</div>
+        <div style="font-size: 13px; opacity: 0.8; margin-bottom: 5px;">הסתברות משוקללת לביטול (02.04)</div>
         <div id="riskScore" class="score">--%</div>
-        <div id="statusLabel" style="font-size: 18px; font-weight: bold;">מנתח נתונים...</div>
-        <button onclick="fetchData()">🔄 רענן נתונים עכשיו</button>
-        <div id="updateTime" style="font-size: 10px; opacity: 0.5; margin-top: 8px;"></div>
+        <div id="statusLabel" style="font-size: 18px; font-weight: bold; color: var(--danger);">מנתח נתונים...</div>
+        <button onclick="fetchData()">🔄 רענן נתונים בזמן אמת</button>
+        <div id="updateTime" style="font-size: 10px; opacity: 0.5; margin-top: 10px;"></div>
     </div>
 
     <div class="info-box">
-        <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">🔍 עקבות מתווה (50 נוסעים / סגירה):</div>
-        <div id="flagContainer">מחפש מילות מפתח בלוח הטיסות...</div>
+        <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">🔍 זיהוי מתווה "שאגת הארי" בלוח הטיסות:</div>
+        <div id="flagContainer" style="font-size: 13px; opacity: 0.8;">סורק מילות מפתח...</div>
     </div>
 
     <div class="flight-status">
-        <span>טיסה IZ 1335</span>
-        <span id="izStatus" style="color: var(--danger)">טוען...</span>
+        <span>סטטוס IZ 1335 (רומא)</span>
+        <span id="izStatus" style="color: var(--warning)">טוען...</span>
     </div>
 </div>
 
 <script>
+    // החלף את הכתובת הזו בכתובת ה-Deployment החדשה שלך
     const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec"; 
 
-    // מילות מפתח לחיפוש בתוך ה-API
-    const keywords = ["50", "חילוץ", "שאגת הארי", "מתווה", "סגור", "בטחוני", "עקבה"];
+    const keywords = ["50", "חילוץ", "שאגת", "מתווה", "סגור", "בטחוני", "עקבה"];
 
     async function fetchData() {
+        const statusLabel = document.getElementById('statusLabel');
+        const riskScore = document.getElementById('riskScore');
+        
         try {
             const res = await fetch(PROXY_URL);
             const data = await res.json();
+            
+            if(data.error) throw new Error(data.error);
+            
             const records = data.records;
 
-            // 1. חיפוש מילות מפתח בתוך כל הערות הטיסה בנתב"ג
+            // 1. סריקת כל הלוח לזיהוי מתווה חירום
             let found = [];
             records.forEach(f => {
-                const note = String(f.CHRMINE || "");
+                const note = (String(f.CHRMINE || "") + String(f.CHRMINEH || "")).toUpperCase();
                 keywords.forEach(word => {
-                    if (note.includes(word) && !found.includes(word)) found.push(word);
+                    if (note.includes(word.toUpperCase()) && !found.includes(word)) found.push(word);
                 });
             });
 
             // 2. חיפוש ספציפי של הטיסה שלך
             const myFlight = records.find(f => String(f.CHFLTN).includes("1335"));
             
-            // 3. חישוב ציון (מבוסס על המידע שארקיע מבטלת עד 04.04 + ממצאים בלוח)
-            let score = 85; // רצפת סיכון בגלל הודעת ארקיע הרשמית
-            if (found.length > 0) score += 10;
-            if (myFlight && String(myFlight.CHRMINE).includes("CANCELED")) score = 100;
+            // 3. לוגיקת שקלול ציון
+            // בגלל ההודעה הרשמית של ארקיע על ביטול עד ה-04.04, הבסיס הוא 85%
+            let score = 85; 
+            
+            if (found.length > 0) score += 5; // חיזוק מהלוח שיש מתווה חירום
+            
+            const izStatusEl = document.getElementById('izStatus');
+            if (myFlight) {
+                const remark = String(myFlight.CHRMINE || "");
+                if (remark.includes("CANCELED")) {
+                    score = 100;
+                    izStatusEl.innerText = "בוטלה רשמית";
+                    izStatusEl.style.color = "var(--danger)";
+                } else {
+                    izStatusEl.innerText = "רשומה (בסיכון)";
+                    izStatusEl.style.color = "var(--warning)";
+                }
+            } else {
+                izStatusEl.innerText = "לא בלוח (ביטול גורף)";
+                izStatusEl.style.color = "var(--danger)";
+                score += 10;
+            }
 
             // עדכון UI
-            document.getElementById('riskScore').innerText = Math.min(score, 98) + "%";
-            document.getElementById('statusLabel').innerText = score > 90 ? "מתווה חירום פעיל 🚨" : "בסיכון גבוה";
-            document.getElementById('updateTime').innerText = "עדכון אחרון: " + data.serverTime;
-            document.getElementById('flagContainer').innerHTML = found.map(f => `<span class="flag-pill">${f}</span>`).join('') || "לא נמצאו מילות מפתח כרגע";
-            document.getElementById('izStatus').innerText = myFlight ? "מופיעה בלוח" : "לא נמצאה (בוטלה?)";
+            riskScore.innerText = Math.min(score, 98) + "%";
+            statusLabel.innerText = score > 90 ? "מתווה חירום פעיל 🚨" : "סיכון גבוה מאוד";
+            document.getElementById('updateTime').innerText = "סריקה אחרונה: " + (data.serverTime || new Date().toLocaleTimeString());
+            
+            document.getElementById('flagContainer').innerHTML = found.length > 0 
+                ? found.map(f => `<span class="flag-pill ${f==='50'?'danger':''}">${f}</span>`).join('') 
+                : "לא זוהו מילות מפתח חריגות ב-500 הטיסות האחרונות";
 
         } catch (e) {
-            document.getElementById('statusLabel').innerText = "שגיאה בחיבור לגוגל";
+            console.error(e);
+            statusLabel.innerText = "שגיאת סנכרון נתונים";
+            statusLabel.style.color = "white";
         }
     }
 
+    // הפעלה אוטומטית בטעינה
     fetchData();
 </script>
 </body>
