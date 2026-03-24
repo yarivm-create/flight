@@ -2,93 +2,75 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מכ"ם IZ 1335 אוטונומי</title>
+    <title>ניטור טיסה 02.04 - ארקיע</title>
     <style>
-        :root { --danger: #ef4444; --warning: #f59e0b; --bg: #0d1117; --primary: #58a6ff; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #c9d1d9; padding: 20px; text-align: center; }
-        .card { background: #161b22; border-radius: 20px; padding: 25px; border: 2px solid #30363d; max-width: 500px; margin: auto; }
-        .score { font-size: 80px; font-weight: 900; color: var(--primary); margin: 10px 0; }
-        .log-box { background: #010409; border-radius: 12px; padding: 15px; margin-top: 15px; text-align: right; font-size: 13px; line-height: 1.6; border-right: 4px solid var(--primary); }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; visibility: hidden; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { background: var(--primary); color: #fff; border: none; padding: 15px; border-radius: 50px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        :root { --danger: #ef4444; --bg: #0d1117; --primary: #58a6ff; --warning: #f59e0b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { background: #161b22; border-radius: 24px; padding: 30px; border: 1px solid #30363d; width: 420px; text-align: center; }
+        .main-score { font-size: 80px; font-weight: 900; color: var(--danger); margin: 5px 0; }
+        .conclusion-box { background: rgba(88,166,255,0.05); border: 1px solid var(--primary); padding: 15px; border-radius: 12px; text-align: right; margin-top: 20px; }
+        .conclusion-title { color: var(--primary); font-weight: bold; font-size: 14px; margin-bottom: 5px; border-bottom: 1px solid var(--primary); display: inline-block; }
+        .stat-line { font-size: 13px; margin: 8px 0; display: flex; justify-content: space-between; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <div style="font-size: 14px; opacity: 0.8;">הסתברות לביטול IZ 1335 (02.04)</div>
-        <div id="riskScore" class="score">--%</div>
-        <div id="statusLabel">ממתין לסריקה מלאה...</div>
-        
-        <button onclick="runAutonomousScan()">
-            <span id="loader" class="loader"></span>
-            הפעל סריקה רב-מוקדית (Live)
-        </button>
-
-        <div class="log-box" id="log">
-            • מוכן לסריקת נתב"ג, ארקיע ופספורטניוז...
-        </div>
+<div class="card">
+    <div style="font-size: 12px; opacity: 0.6;">סיכוי לשינוי מתווה (02.04)</div>
+    <div id="riskScore" class="main-score">--%</div>
+    
+    <div style="padding: 10px;">
+        <div class="stat-line"><span>ביטולי ארקיע היום (נתב"ג):</span> <b id="cancelCount" style="color:var(--danger)">--</b></div>
+        <div class="stat-line"><span>סטטוס הטיסה שלך (02.04):</span> <b id="myFlight">סורק...</b></div>
     </div>
+
+    <div class="conclusion-box">
+        <div class="conclusion-title">📍 השורה התחתונה:</div>
+        <div id="conclusionText" style="font-size: 14px; line-height: 1.5;">מנתח נתונים מהמקורות...</div>
+    </div>
+    
+    <div id="updateTime" style="font-size: 10px; opacity: 0.4; margin-top: 20px;"></div>
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec";
-    const ARKIA_URL = `https://api.allorigins.win/get?url=${encodeURIComponent('https://www.arkia.com/he/content/updates')}`;
-    const PASSPORT_URL = `https://api.allorigins.win/get?url=${encodeURIComponent('https://passportnews.co.il/%D7%99%D7%A9%D7%A8%D7%90%D7%9C-%D7%91%D7%9E%D7%9C%D7%97%D7%9E%D7%94')}`;
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec";
 
-    async function runAutonomousScan() {
-        const log = document.getElementById('log');
-        const loader = document.getElementById('loader');
-        loader.style.visibility = "visible";
-        log.innerHTML = "• מתחיל סריקה אוטונומית...";
-
-        let score = 0;
-        let findings = [];
-
+    async function update() {
         try {
-            // 1. סריקת נתב"ג (דרך גוגל)
-            log.innerHTML += "<br>• מתחבר ל-API נתב\"ג...";
-            const natbagRes = await fetch(GOOGLE_SCRIPT_URL);
-            const natbagData = await natbagRes.json();
-            const myFlight = natbagData.records.find(f => String(f.CHFLTN).includes("1335") && String(f.CHSTD).includes("02/04"));
+            const res = await fetch(SCRIPT_URL);
+            const data = await res.json();
             
-            if (myFlight && (String(myFlight.CHRMINE).includes("CANCELED") || String(myFlight.CHRMINE).includes("מבוטלת"))) {
-                score = 100; findings.push("❌ ביטול סופי זוהה בלוח נתב\"ג!");
-            } else if (myFlight) {
-                score += 20; findings.push("✅ הטיסה מופיעה בלוח ל-02.04");
+            document.getElementById('cancelCount').innerText = data.arkiaStats.totalCancelled;
+            document.getElementById('myFlight').innerText = data.arkiaStats.myFlightStatus;
+
+            // לוגיקת המסקנה
+            let score = 10;
+            let conclusion = "";
+
+            if (data.mתווהDetected) {
+                score = 95;
+                conclusion = "זוהה מתווה 'שאגת הארי' המציין שטיסות רומא הועברו לטאבה. הסיכוי לטיסה רגילה מנתב\"ג אפסי.";
+            } else if (data.arkiaStats.totalCancelled > 10) {
+                score = 60;
+                conclusion = "יש גל ביטולים משמעותי בארקיע כרגע. למרות שרומא עוד לא הופיעה כמבוטלת, יש סיכון גבוה לשינוי.";
+            } else {
+                conclusion = "כרגע אין אינדיקציה לביטול גורף, אך מומלץ לעקוב אחר הודעות מארקיע.";
             }
 
-            // 2. סריקת ארקיע (דרך פרוקסי)
-            log.innerHTML += "<br>• סורק אתר ארקיע (עוקף חסימה)...";
-            const arkiaRes = await fetch(ARKIA_URL);
-            const arkiaData = await arkiaRes.json();
-            const arkiaText = arkiaData.contents;
-            if (arkiaText.includes("F1335") || arkiaText.includes("N03240")) {
-                score += 50; findings.push("⚠️ נמצא שינוי מתווה באתר ארקיע (עקבה/טאבה)");
+            if (data.arkiaStats.myFlightStatus.includes("מבוטלת")) {
+                score = 100;
+                conclusion = "הטיסה בוטלה רשמית בלוח נתב\"ג. פעל לפי הנחיות ארקיע למתווה חילוץ.";
             }
 
-            // 3. סריקת פספורטניוז (דרך פרוקסי)
-            log.innerHTML += "<br>• סורק חדשות תעופה...";
-            const passRes = await fetch(PASSPORT_URL);
-            const passData = await passRes.json();
-            if (passData.contents.includes("50 נוסעים")) {
-                score += 25; findings.push("🚨 מגבלת 50 נוסעים פעילה");
-            }
+            document.getElementById('riskScore').innerText = score + "%";
+            document.getElementById('conclusionText').innerText = conclusion;
+            document.getElementById('riskScore').style.color = score > 80 ? "var(--danger)" : (score > 40 ? "var(--warning)" : "var(--primary)");
+            document.getElementById('updateTime').innerText = "עדכון אחרון: " + data.time;
 
-            // עדכון תוצאות
-            document.getElementById('riskScore').innerText = Math.min(score || 5, 100) + "%";
-            document.getElementById('riskScore').style.color = score > 60 ? "#ef4444" : "#38bdf8";
-            log.innerHTML = findings.map(f => `• ${f}`).join("<br>");
-            document.getElementById('statusLabel').innerText = "סריקה הושלמה בהצלחה";
-
-        } catch (e) {
-            log.innerHTML += "<br>❌ שגיאה בסריקה. נסה שוב בעוד רגע.";
-        } finally {
-            loader.style.visibility = "hidden";
-        }
+        } catch(e) { document.getElementById('conclusionText').innerText = "שגיאה בחיבור לשרת הניטור."; }
     }
+    update();
+    setInterval(update, 300000);
 </script>
 </body>
 </html>
