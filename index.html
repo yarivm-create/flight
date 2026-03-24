@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מכ"ם טיסות ארקיע - דאשבורד אישי</title>
+    <title>מערכת חיזוי וסיכונים - ארקיע</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -13,7 +13,6 @@
             --warning: #f59e0b;
             --danger: #ef4444;
             --text: #f8fafc;
-            --accent: #2563eb;
         }
 
         body {
@@ -29,10 +28,10 @@
 
         .container { width: 100%; max-width: 480px; }
 
-        #refreshBtn {
+        button#refreshBtn {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: linear-gradient(135deg, var(--primary), #2563eb);
             border: none;
             border-radius: 15px;
             color: white;
@@ -41,220 +40,180 @@
             cursor: pointer;
             margin-bottom: 20px;
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-            transition: transform 0.2s;
         }
-        #refreshBtn:active { transform: scale(0.98); }
 
-        .my-flight-card {
-            background: linear-gradient(145deg, #1e293b, #0f172a);
-            border: 1.5px solid var(--primary);
+        /* מנוע ניהול סיכונים */
+        .risk-card {
+            background: var(--card-bg);
             border-radius: 24px;
             padding: 20px;
             text-align: center;
             margin-bottom: 20px;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            transition: all 0.4s;
         }
 
-        .status-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-size: 12px;
-            font-weight: 800;
+        .risk-score { font-size: 64px; font-weight: 900; line-height: 1; margin: 10px 0; }
+        .risk-label { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+
+        /* כרטיס טיסה אישי */
+        .my-flight {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-right: 5px solid var(--primary);
         }
 
-        .flight-time-big {
-            font-size: 48px;
-            font-weight: 800;
-            margin: 10px 0;
-            letter-spacing: -1px;
-        }
-
-        .details-row {
+        /* בורר מצב חיצוני (מדיה/בטחוני) */
+        .news-factor-selector {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            font-size: 14px;
-            opacity: 0.9;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .stats-box {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 25px;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .perc-display { font-size: 72px; font-weight: 900; color: var(--primary); line-height: 1; }
-        
-        .issue-section-title {
-            display: flex;
-            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
             justify-content: space-between;
-            margin-bottom: 15px;
-            font-size: 18px;
         }
+
+        .factor-btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 11px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #1e293b;
+            color: white;
+            cursor: pointer;
+        }
+
+        .factor-btn.active { background: var(--primary); color: #000; font-weight: bold; }
 
         .issue-item {
             background: rgba(255,255,255,0.03);
-            margin-bottom: 12px;
-            padding: 16px;
-            border-radius: 16px;
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: 12px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            border-right: 4px solid var(--warning);
-        }
-
-        .issue-item.canceled { border-right-color: var(--danger); }
-
-        .flight-info b { font-size: 16px; display: block; margin-top: 2px; }
-        .time-text { font-size: 13px; opacity: 0.6; }
-        .delay-arrow { color: var(--warning); margin: 0 4px; }
-
-        .tag {
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: bold;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <button id="refreshBtn" onclick="updateDashboard()">🔄 רענן נתונים עכשיו</button>
+    <button id="refreshBtn" onclick="updateDashboard()">🔄 רענן ונתח נתונים</button>
 
-    <div class="my-flight-card">
-        <div id="my-status" class="status-badge" style="background: var(--success)">טוען...</div>
-        <div style="opacity: 0.7; font-size: 14px;">הטיסה שלי לרומא (IZ 1335)</div>
-        <div class="flight-time-big" id="my-time">--:-- | --.--</div>
-        <div class="details-row">
-            <span id="my-terminal">טרמינל --</span>
-            <span>|</span>
-            <span id="my-checkin">צ'ק-אין: --</span>
-        </div>
-        <div id="my-update-note" style="font-size: 12px; color: var(--success); font-weight: bold;">בדיקת סטטוס...</div>
+    <div style="font-size: 12px; margin-bottom: 8px; opacity: 0.7;">עדכון פקטור חיצוני (חדשות/מדיה):</div>
+    <div class="news-factor-selector">
+        <button class="factor-btn active" onclick="setNewsFactor(0, this)">שגרה 🟢</button>
+        <button class="factor-btn" onclick="setNewsFactor(15, this)">כוננות/מתח 🟡</button>
+        <button class="factor-btn" onclick="setNewsFactor(40, this)">הסלמה/שביתה 🔴</button>
     </div>
 
-    <div class="stats-box">
-        <div style="font-size: 14px; opacity: 0.7;">מדד ביטולי ארקיע (48 ש')</div>
-        <div id="perc" class="perc-display">0%</div>
-        <div id="comparison-msg" style="font-size: 15px; font-weight: bold; margin-top: 5px;">מנתח נתונים...</div>
-        <div id="stats-summary" style="font-size: 12px; opacity: 0.5; margin-top: 12px;"></div>
+    <div id="risk-container" class="risk-card">
+        <div style="font-size: 14px; opacity: 0.8;">מדד סיכון ביטול (Probability)</div>
+        <div id="risk-score" class="risk-score">0%</div>
+        <div id="risk-label" class="risk-label">מנתח...</div>
+        <div id="risk-desc" style="font-size: 12px; opacity: 0.6;">משקלל נתוני ארקיע, נתב"ג וחדשות</div>
     </div>
 
-    <div class="issue-section-title">
-        <span>⚠️ שיבושים בארקיע</span>
-        <span id="issue-count" style="font-size: 14px; opacity: 0.6;">(0)</span>
+    <div class="my-flight">
+        <div id="my-flight-status" style="float: left; font-weight: bold; color: var(--success);">בזמן</div>
+        <div style="font-size: 14px; opacity: 0.7;">IZ 1335 | רומא</div>
+        <div id="my-flight-time" style="font-size: 24px; font-weight: bold; margin: 5px 0;">--:-- | 02.04</div>
+        <div id="my-flight-details" style="font-size: 12px; color: var(--primary);">טרמינל -- | צ'ק-אין: --</div>
     </div>
-    
+
+    <div style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">⚠️ שיבושים חיים (ארקיע):</div>
     <div id="issues-list"></div>
 </div>
 
 <script>
-    // שים כאן את הכתובת של ה-Google Apps Script שפרסמת (Deployment URL)
+    // כתובת ה-Proxy שלך (Google Apps Script)
     const PROXY_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec"; 
+    
+    let currentNewsFactor = 0;
+
+    function setNewsFactor(val, btn) {
+        currentNewsFactor = val;
+        document.querySelectorAll('.factor-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateDashboard(); // עדכון מיידי של המדד
+    }
 
     async function updateDashboard() {
         const btn = document.getElementById('refreshBtn');
-        btn.innerText = "⏳ מושך נתונים מהשרת...";
+        btn.innerText = "⏳ מנתח סיכונים...";
         
         try {
-            // קריאה ל-Proxy שלך
             const response = await fetch(PROXY_URL);
             const data = await response.json();
-            
-            // וידוא שהנתונים הגיעו במבנה של משרד התחבורה
             const records = data.result.records;
 
-            // 1. חישוב ממוצע נתב"ג
+            // 1. חישוב סטטיסטיקה
             const totalCanceledAll = records.filter(f => String(f.CHRMINE || "").includes('CANCELED')).length;
-            const avgBenGurion = Math.round((totalCanceledAll / records.length) * 100) || 0;
+            const avgBenGurion = (totalCanceledAll / records.length) * 100;
 
-            // 2. סינון ארקיע (IZ)
             const arkia = records.filter(f => String(f.CHOPER || "").includes('IZ'));
-            const issues = arkia.filter(f => 
-                String(f.CHRMINE || "").includes('CANCELED') || 
-                String(f.CHRMINE || "").includes('DELAYED') ||
-                (f.CHPTOL && f.CHSTOL !== f.CHPTOL)
-            );
+            const arkiaCanceled = arkia.filter(f => String(f.CHRMINE || "").includes('CANCELED')).length;
+            const arkiaPerc = (arkiaCanceled / arkia.length) * 100;
 
-            const arkiaCanceled = issues.filter(f => String(f.CHRMINE).includes('CANCELED')).length;
-            const arkiaPerc = Math.round((arkiaCanceled / arkia.length) * 100) || 0;
+            // 2. מנוע חישוב סיכון (משקולות)
+            // 40% ארקיע + 20% נתב"ג + פקטור חדשות
+            let totalRisk = Math.round((arkiaPerc * 0.4) + (avgBenGurion * 0.2) + currentNewsFactor);
+            if (totalRisk > 100) totalRisk = 100;
 
-            // עדכון המדד
-            document.getElementById('perc').innerText = arkiaPerc + "%";
-            const compElem = document.getElementById('comparison-msg');
-            if (arkiaPerc > avgBenGurion) {
-                compElem.innerText = `🚨 גבוה מממוצע נתב"ג (${avgBenGurion}%)`;
-                compElem.style.color = "var(--danger)";
+            // עדכון ויזואלי של המדד
+            const riskScoreElem = document.getElementById('risk-score');
+            const riskLabelElem = document.getElementById('risk-label');
+            const riskCard = document.getElementById('risk-container');
+
+            riskScoreElem.innerText = totalRisk + "%";
+            
+            if (totalRisk < 30) {
+                riskLabelElem.innerText = "סיכון נמוך ✅";
+                riskCard.style.borderColor = "var(--success)";
+                riskScoreElem.style.color = "var(--success)";
+            } else if (totalRisk < 60) {
+                riskLabelElem.innerText = "סיכון בינוני ⚠️";
+                riskCard.style.borderColor = "var(--warning)";
+                riskScoreElem.style.color = "var(--warning)";
             } else {
-                compElem.innerText = `✅ נמוך מממוצע נתב"ג (${avgBenGurion}%)`;
-                compElem.style.color = "var(--success)";
+                riskLabelElem.innerText = "סיכון גבוה 🚨";
+                riskCard.style.borderColor = "var(--danger)";
+                riskScoreElem.style.color = "var(--danger)";
             }
-            document.getElementById('stats-summary').innerText = `מתוך ${arkia.length} טיסות ארקיע, ${issues.length} בשיבוש`;
-            document.getElementById('issue-count').innerText = `(${issues.length})`;
 
-            // 3. עדכון הטיסה שלך (IZ 1335)
-            const myFlight = arkia.find(f => String(f.CHFLTN) === "1335") || arkia[0]; 
-
+            // 3. עדכון הטיסה שלך
+            const myFlight = arkia.find(f => String(f.CHFLTN) === "1335") || arkia[0];
             if (myFlight) {
+                const [d, t] = myFlight.CHSTOL.split('T');
+                document.getElementById('my-flight-time').innerText = `${t.substring(0,5)} | 02.04`;
+                document.getElementById('my-flight-details').innerText = `טרמינל ${myFlight.CHTERM || '3'} | צ'ק-אין: ${myFlight.CHCKZN || 'טרם נקבע'}`;
+                
                 const status = String(myFlight.CHRMINE || "");
-                const isC = status.includes('CANCELED');
-                const isD = status.includes('DELAYED');
-                
-                const statusBtn = document.getElementById('my-status');
-                statusBtn.innerText = isC ? "מבוטלת" : (isD ? "מעוכבת" : "בזמן");
-                statusBtn.style.background = isC ? "var(--danger)" : (isD ? "var(--warning)" : "var(--success)");
-                
-                const [datePart, timePart] = myFlight.CHSTOL.split('T');
-                const dateArr = datePart.split('-');
-                const formattedDate = `${dateArr[2]}.${dateArr[1]}`;
-                document.getElementById('my-time').innerText = `${timePart.substring(0,5)} | ${formattedDate}`;
-                
-                document.getElementById('my-terminal').innerText = `טרמינל ${myFlight.CHTERM || '3'}`;
-                document.getElementById('my-checkin').innerText = `צ'ק-אין: ${myFlight.CHCKZN || 'טרם פורסם'}`;
-                document.getElementById('my-update-note').innerText = isC ? "צור קשר עם החברה" : "טיסה נעימה! ✈️";
+                const statusElem = document.getElementById('my-flight-status');
+                statusElem.innerText = status.includes('CANCELED') ? "מבוטלת" : (status.includes('DELAYED') ? "מעוכבת" : "בזמן");
+                statusElem.style.color = status.includes('CANCELED') ? "var(--danger)" : "var(--success)";
             }
 
-            // 4. רשימת השיבושים
+            // 4. רשימת שיבושים
             const list = document.getElementById('issues-list');
             list.innerHTML = "";
+            const issues = arkia.filter(f => String(f.CHRMINE || "").includes('CANCELED') || String(f.CHRMINE || "").includes('DELAYED'));
             
-            issues.forEach(f => {
-                const isC = String(f.CHRMINE).includes('CANCELED');
-                const sched = f.CHSTOL.split('T')[1].substring(0,5);
-                const actual = f.CHPTOL ? f.CHPTOL.split('T')[1].substring(0,5) : sched;
-                
-                let timeHTML = sched;
-                if (!isC && sched !== actual) {
-                    timeHTML = `${sched} <span class="delay-arrow">⬅️</span> ${actual}`;
-                }
-
+            issues.slice(0, 5).forEach(f => {
                 list.innerHTML += `
-                    <div class="issue-item ${isC ? 'canceled' : ''}">
-                        <div class="flight-info">
-                            <span class="time-text">זמן: ${timeHTML}</span>
-                            <b>IZ ${f.CHFLTN} ל${f.CHLOC1TH || '---'}</b>
-                        </div>
-                        <span class="tag" style="background: ${isC ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'}; color: ${isC ? 'var(--danger)' : 'var(--warning)'}">
-                            ${isC ? 'בוטלה' : 'שיבוש'}
-                        </span>
+                    <div class="issue-item">
+                        <span>IZ ${f.CHFLTN} ל${f.CHLOC1TH}</span>
+                        <span style="color:var(--danger)">${f.CHRMINH}</span>
                     </div>`;
             });
 
         } catch (e) {
-            console.error("Error:", e);
-            document.getElementById('comparison-msg').innerText = "שגיאה בחיבור ל-Proxy";
+            console.error(e);
+            document.getElementById('risk-label').innerText = "שגיאת נתונים";
         }
-        btn.innerText = "🔄 רענן נתונים עכשיו";
+        btn.innerText = "🔄 רענן ונתח נתונים";
     }
 
     updateDashboard();
