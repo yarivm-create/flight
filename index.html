@@ -6,123 +6,113 @@
     <title>מנטר טיסה IZ 1335 - 02.04</title>
     <style>
         :root { --danger: #ef4444; --bg: #0d1117; --primary: #58a6ff; --card: #161b22; --success: #3fb950; --warning: #f59e0b; }
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
         .card { background: var(--card); border-radius: 28px; padding: 35px; border: 1px solid #30363d; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
-        
-        .header-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 5px; }
-        .main-score { font-size: 90px; font-weight: 900; line-height: 1; margin: 15px 0; letter-spacing: -3px; transition: 0.5s; }
-        
-        .stats-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 25px 0; }
-        .stat-item { background: #010409; padding: 15px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #21262d; }
-        .stat-label { font-size: 14px; color: #8b949e; }
-        .stat-val { font-weight: bold; font-size: 15px; }
-        .cancel-pill { background: rgba(239, 68, 68, 0.15); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-weight: 900; }
-
-        .banner { display: none; padding: 12px; border-radius: 12px; margin-bottom: 15px; font-size: 13px; text-align: right; animation: fadeIn 0.5s; }
-        .banner.opt { background: rgba(63, 185, 80, 0.1); border: 1px solid var(--success); color: var(--success); }
-        .banner.pess { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); }
-
-        .conclusion-box { background: rgba(88, 166, 255, 0.05); border-right: 4px solid var(--primary); padding: 18px; border-radius: 12px; text-align: right; margin-top: 10px; }
-        .conclusion-title { color: var(--primary); font-weight: bold; font-size: 13px; margin-bottom: 8px; display: block; }
-        
-        .refresh-btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 25px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; transition: 0.3s; }
-        .refresh-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
-        .refresh-btn:active { transform: scale(0.98); }
-        
-        .update-tag { font-size: 11px; opacity: 0.4; margin-top: 20px; }
+        .main-score { font-size: 85px; font-weight: 900; line-height: 1; margin: 15px 0; letter-spacing: -3px; }
+        .banner { display: none; padding: 12px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; text-align: right; border: 1px solid transparent; }
+        .banner.opt { background: rgba(63, 185, 80, 0.1); border-color: var(--success); color: var(--success); }
+        .banner.pess { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; margin-top: 8px; }
+        .tag { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        .stats-grid { display: grid; gap: 10px; margin: 20px 0; }
+        .stat-item { background: #010409; padding: 14px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #21262d; }
+        .refresh-btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .spinning { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(-360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div class="header-label">סיכוי לשינוי/ביטול מתווה</div>
+    <div style="opacity: 0.5; font-size: 13px;">סיכוי לשינוי/ביטול מתווה</div>
     <div id="riskScore" class="main-score">--%</div>
 
-    <div id="optBanner" class="banner opt">🌍 <b>מדד אופטימיות:</b> זוהו סימני רגיעה ב-CNN/Ynet.</div>
-    <div id="pessBanner" class="banner pess">⚠️ <b>מדד פסימיות:</b> זוהו דיווחים על הסלמה בחדשות.</div>
+    <div id="optBanner" class="banner opt">
+        <b>🌍 אופטימיות בחדשות:</b>
+        <div id="optTags" class="tag-list"></div>
+    </div>
+
+    <div id="pessBanner" class="banner pess">
+        <b>⚠️ פסימיות בחדשות:</b>
+        <div id="pessTags" class="tag-list"></div>
+    </div>
 
     <div class="stats-grid">
-        <div class="stat-item">
-            <span class="stat-label">ביטולי ארקיע היום (נתב"ג)</span>
-            <span id="cancelCount" class="cancel-pill">--</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">סטטוס ב-02.04</span>
-            <span id="flightStatus" class="stat-val">סורק...</span>
-        </div>
+        <div class="stat-item"><span>ביטולי ארקיע היום</span><span id="cancelCount" style="color:var(--danger); font-weight:900;">--</span></div>
+        <div class="stat-item"><span>סטטוס ב-02.04</span><span id="flightStatus" style="font-weight:bold">סורק...</span></div>
     </div>
 
-    <div class="conclusion-box">
-        <span class="conclusion-title">📍 השורה התחתונה:</span>
-        <div id="conclusionText" style="font-size: 14px; line-height: 1.5;">מנתח נתונים ומגמות...</div>
+    <div style="background: rgba(88, 166, 255, 0.05); border-right: 4px solid var(--primary); padding: 15px; border-radius: 10px; text-align: right;">
+        <b style="color:var(--primary); font-size:12px;">📍 השורה התחתונה:</b>
+        <div id="conclusionText" style="font-size: 14px; margin-top:5px;">מנתח מקורות...</div>
     </div>
 
-    <button class="refresh-btn" onclick="update()">
-        <span id="refreshIcon">🔄</span>
-        רענן נתונים עכשיו
+    <button class="refresh-btn" id="refreshBtn" onclick="update()">
+        <span id="refreshIcon">🔄</span> רענן נתונים עכשיו
     </button>
-
-    <div id="updateTime" class="update-tag">סנכרון אחרון: --</div>
+    <div id="updateTime" style="font-size:10px; opacity:0.4; margin-top:15px;">סנכרון אחרון: --</div>
 </div>
 
 <script>
-    // הכנס כאן את הלינק שקיבלת מ-Google Apps Script
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6hFDEjJZotHSxOJg3PYUKFm8AHWizcD87zIITUVJT-YrCGUSvbqIDYSgsl7MvM8M8Yw/exec";
+    const SCRIPT_URL = "הכנס_כאן_את_הלינק_שלך";
 
     async function update() {
+        const btn = document.getElementById('refreshBtn');
         const icon = document.getElementById('refreshIcon');
+        btn.disabled = true;
         icon.classList.add('spinning');
-        
+
+        // פתרון לשגיאת ה-Console: שימוש ב-AbortController
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); 
+
         try {
-            const res = await fetch(SCRIPT_URL);
+            const res = await fetch(SCRIPT_URL, { signal: controller.signal });
             const data = await res.json();
-            
-            // 1. נתב"ג
+            clearTimeout(timeoutId);
+
+            // 1. עדכון מילים ותגים
+            updateTags('optBanner', 'optTags', data.optimismKeywords);
+            updateTags('pessBanner', 'pessTags', data.pessimismKeywords);
+
+            // 2. עדכון נתונים טכניים
             document.getElementById('cancelCount').innerText = data.arkiaStats.totalCancelled;
             document.getElementById('flightStatus').innerText = data.arkiaStats.myFlightStatus;
-            
-            // 2. חישוב סיכון דינמי
-            let score = 10;
-            let conclusion = "";
-            
-            if (data.mתווהDetected) score = 95;
-            
-            // שקלול חדשות (אופטימיות מורידה, פסימיות מעלה)
-            if (data.optimismLevel > 0) {
-                score -= Math.min(data.optimismLevel, 40);
-                document.getElementById('optBanner').style.display = 'block';
-            } else { document.getElementById('optBanner').style.display = 'none'; }
-            
-            if (data.pessimismLevel > 20) {
-                score += 15;
-                document.getElementById('pessBanner').style.display = 'block';
-            } else { document.getElementById('pessBanner').style.display = 'none'; }
 
-            // 3. קביעת מסקנה
-            if (score >= 90) {
-                conclusion = "מתווה 'שאגת הארי' בתוקף. הטיסה כנראה תצא מטאבה/עקבה. היערך בהתאם.";
-            } else if (score > 60) {
-                conclusion = "ישנה אי-ודאות גבוהה. גל ביטולים בארקיע לצד כותרות מעורבות.";
-            } else {
-                conclusion = "כרגע המגמה נוטה לשגרה, אך יש להמשיך לעקוב אחר הודעות ארקיע.";
-            }
+            // 3. חישוב ציון דינמי
+            let score = data.mתווהDetected ? 95 : 50;
+            score -= (data.optimismKeywords.length * 8);
+            score += (data.pessimismKeywords.length * 5);
+            const finalScore = Math.max(Math.min(score, 100), 5);
 
-            // 4. עדכון ויזואלי
+            // 4. עיצוב סופי
             const scoreEl = document.getElementById('riskScore');
-            scoreEl.innerText = Math.max(Math.min(score, 100), 5) + "%";
-            scoreEl.style.color = score > 80 ? "var(--danger)" : (score > 50 ? "var(--warning)" : "var(--success)");
+            scoreEl.innerText = finalScore + "%";
+            scoreEl.style.color = finalScore > 80 ? "var(--danger)" : (finalScore > 50 ? "var(--warning)" : "var(--success)");
             
-            document.getElementById('conclusionText').innerText = conclusion;
+            document.getElementById('conclusionText').innerText = finalScore > 80 ? 
+                "מתווה טאבה/עקבה מסומן כפעיל. הסבירות לטיסה מנתב\"ג נמוכה." : 
+                "זוהו אינדיקציות לרגיעה שעשויות להשפיע על החזרה ללו\"ז רגיל.";
+            
             document.getElementById('updateTime').innerText = "סנכרון אחרון: " + data.time;
 
         } catch(e) {
-            document.getElementById('conclusionText').innerText = "שגיאה בתקשורת עם השרת.";
+            console.warn("Async safety catch:", e.message);
+            document.getElementById('conclusionText').innerText = "מתקשה להתחבר. נסה שוב.";
         } finally {
+            btn.disabled = false;
             icon.classList.remove('spinning');
         }
+    }
+
+    function updateTags(bannerId, listId, words) {
+        const banner = document.getElementById(bannerId);
+        const list = document.getElementById(listId);
+        list.innerHTML = '';
+        if (words && words.length > 0) {
+            banner.style.display = 'block';
+            words.forEach(w => list.innerHTML += `<span class="tag">${w}</span>`);
+        } else { banner.style.display = 'none'; }
     }
 
     update();
