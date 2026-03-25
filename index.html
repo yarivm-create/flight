@@ -7,16 +7,22 @@
     <style>
         :root { --danger: #ef4444; --bg: #0d1117; --primary: #58a6ff; --card: #161b22; --success: #3fb950; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #c9d1d9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .card { background: var(--card); border-radius: 28px; padding: 35px; border: 1px solid #30363d; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
-        .main-score { font-size: 85px; font-weight: 900; line-height: 1; margin: 15px 0; letter-spacing: -3px; }
+        .card { background: var(--card); border-radius: 28px; padding: 35px; border: 1px solid #30363d; width: 100%; max-width: 420px; text-align: center; position: relative; }
+        
+        /* ציון עם בועת הסבר */
+        .score-container { position: relative; cursor: help; display: inline-block; }
+        .main-score { font-size: 85px; font-weight: 900; line-height: 1; margin: 10px 0; letter-spacing: -3px; }
+        .tooltip { visibility: hidden; width: 200px; background-color: #30363d; color: #fff; text-align: right; border-radius: 8px; padding: 12px; position: absolute; z-index: 10; bottom: 100%; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; font-size: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .score-container:hover .tooltip { visibility: visible; opacity: 1; }
+
         .banner { display: none; padding: 12px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; text-align: right; border: 1px solid transparent; }
         .banner.opt { background: rgba(63, 185, 80, 0.1); border-color: var(--success); color: var(--success); }
         .banner.pess { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
         .tag-list { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; margin-top: 8px; }
-        .tag { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-        .stats-grid { display: grid; gap: 10px; margin: 20px 0; }
-        .stat-item { background: #010409; padding: 14px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #21262d; }
-        .refresh-btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .tag { background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+
+        .stat-item { background: #010409; padding: 14px; border-radius: 14px; display: flex; justify-content: space-between; margin-bottom: 10px; border: 1px solid #21262d; }
+        .refresh-btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .spinning { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(-360deg); } }
     </style>
@@ -24,8 +30,12 @@
 <body>
 
 <div class="card">
-    <div style="opacity: 0.5; font-size: 13px;">סיכוי לשינוי/ביטול מתווה</div>
-    <div id="riskScore" class="main-score">--%</div>
+    <div style="opacity: 0.5; font-size: 12px;">הסתברות לשינוי מתווה (02.04)</div>
+    
+    <div class="score-container">
+        <div id="riskScore" class="main-score">--%</div>
+        <div id="scoreTooltip" class="tooltip">מחשב נתונים...</div>
+    </div>
 
     <div id="optBanner" class="banner opt">
         <b>🌍 אופטימיות בחדשות:</b>
@@ -37,20 +47,20 @@
         <div id="pessTags" class="tag-list"></div>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-item"><span>ביטולי ארקיע היום</span><span id="cancelCount" style="color:var(--danger); font-weight:900;">--</span></div>
-        <div class="stat-item"><span>סטטוס ב-02.04</span><span id="flightStatus" style="font-weight:bold">סורק...</span></div>
+    <div style="margin: 20px 0;">
+        <div class="stat-item"><span>ביטולי ארקיע (נתב"ג)</span><span id="cancelCount" style="color:var(--danger); font-weight:bold;">--</span></div>
+        <div class="stat-item"><span>סטטוס הטיסה שלך</span><span id="flightStatus" style="font-weight:bold">סורק...</span></div>
     </div>
 
     <div style="background: rgba(88, 166, 255, 0.05); border-right: 4px solid var(--primary); padding: 15px; border-radius: 10px; text-align: right;">
         <b style="color:var(--primary); font-size:12px;">📍 השורה התחתונה:</b>
-        <div id="conclusionText" style="font-size: 14px; margin-top:5px;">מנתח מקורות...</div>
+        <div id="conclusionText" style="font-size: 14px; margin-top:4px;">מנתח מגמות ונתוני נתב"ג...</div>
     </div>
 
     <button class="refresh-btn" id="refreshBtn" onclick="update()">
         <span id="refreshIcon">🔄</span> רענן נתונים עכשיו
     </button>
-    <div id="updateTime" style="font-size:10px; opacity:0.4; margin-top:15px;">סנכרון אחרון: --</div>
+    <div id="updateTime" style="font-size:10px; opacity:0.3; margin-top:15px;">סנכרון אחרון: --</div>
 </div>
 
 <script>
@@ -59,10 +69,8 @@
     async function update() {
         const btn = document.getElementById('refreshBtn');
         const icon = document.getElementById('refreshIcon');
-        btn.disabled = true;
-        icon.classList.add('spinning');
+        btn.disabled = true; icon.classList.add('spinning');
 
-        // פתרון לשגיאת ה-Console: שימוש ב-AbortController
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); 
 
@@ -72,49 +80,54 @@
             clearTimeout(timeoutId);
 
             // 1. עדכון מילים ותגים
-            updateTags('optBanner', 'optTags', data.optimismKeywords);
-            updateTags('pessBanner', 'pessTags', data.pessimismKeywords);
+            renderTags('optBanner', 'optTags', data.optimismKeywords);
+            renderTags('pessBanner', 'pessTags', data.pessimismKeywords);
 
-            // 2. עדכון נתונים טכניים
-            document.getElementById('cancelCount').innerText = data.arkiaStats.totalCancelled;
-            document.getElementById('flightStatus').innerText = data.arkiaStats.myFlightStatus;
+            // 2. חישוב ציון לוגי
+            let base = data.mתווהDetected ? 95 : 40;
+            let optImpact = data.optimismKeywords.length * 8;
+            let pessImpact = data.pessimismKeywords.length * 5;
+            let finalScore = Math.max(Math.min(base - optImpact + pessImpact, 100), 5);
 
-            // 3. חישוב ציון דינמי
-            let score = data.mתווהDetected ? 95 : 50;
-            score -= (data.optimismKeywords.length * 8);
-            score += (data.pessimismKeywords.length * 5);
-            const finalScore = Math.max(Math.min(score, 100), 5);
+            // 3. עדכון בועת הסבר (Tooltip)
+            document.getElementById('scoreTooltip').innerHTML = `
+                <b>פירוט הציון:</b><br>
+                • בסיס (מתווה): ${base}%<br>
+                • הפחתת אופטימיות: -${optImpact}%<br>
+                • תוספת פסימיות: +${pessImpact}%<br>
+                <hr style="opacity:0.2">
+                סריקה בוצעה ב-4 אתרים.
+            `;
 
-            // 4. עיצוב סופי
+            // 4. עדכון UI
             const scoreEl = document.getElementById('riskScore');
             scoreEl.innerText = finalScore + "%";
             scoreEl.style.color = finalScore > 80 ? "var(--danger)" : (finalScore > 50 ? "var(--warning)" : "var(--success)");
             
+            document.getElementById('cancelCount').innerText = data.arkiaStats.totalCancelled;
+            document.getElementById('flightStatus').innerText = data.arkiaStats.myFlightStatus;
             document.getElementById('conclusionText').innerText = finalScore > 80 ? 
-                "מתווה טאבה/עקבה מסומן כפעיל. הסבירות לטיסה מנתב\"ג נמוכה." : 
-                "זוהו אינדיקציות לרגיעה שעשויות להשפיע על החזרה ללו\"ז רגיל.";
-            
+                "הסבירות לטיסה מנתב\"ג נמוכה עקב זיהוי המתווה." : 
+                "ישנה מגמת שיפור בחדשות שעשויה להוביל לביטול המתווה.";
             document.getElementById('updateTime').innerText = "סנכרון אחרון: " + data.time;
 
         } catch(e) {
-            console.warn("Async safety catch:", e.message);
-            document.getElementById('conclusionText').innerText = "מתקשה להתחבר. נסה שוב.";
+            console.warn("Network noise handled.");
+            document.getElementById('conclusionText').innerText = "שגיאת תקשורת. נסה שוב.";
         } finally {
-            btn.disabled = false;
-            icon.classList.remove('spinning');
+            btn.disabled = false; icon.classList.remove('spinning');
         }
     }
 
-    function updateTags(bannerId, listId, words) {
-        const banner = document.getElementById(bannerId);
-        const list = document.getElementById(listId);
-        list.innerHTML = '';
+    function renderTags(bannerId, listId, words) {
+        const b = document.getElementById(bannerId);
+        const l = document.getElementById(listId);
+        l.innerHTML = '';
         if (words && words.length > 0) {
-            banner.style.display = 'block';
-            words.forEach(w => list.innerHTML += `<span class="tag">${w}</span>`);
-        } else { banner.style.display = 'none'; }
+            b.style.display = 'block';
+            words.forEach(w => l.innerHTML += `<span class="tag">${w}</span>`);
+        } else { b.style.display = 'none'; }
     }
-
     update();
 </script>
 </body>
